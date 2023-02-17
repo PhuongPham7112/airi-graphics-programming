@@ -3,7 +3,7 @@
   Assignment 1: Height Fields with Shaders.
   C++ starter code
 
-  Student username: phuongp
+  Student username: <type your USC username here>
 */
 
 #include "basicPipelineProgram.h"
@@ -31,7 +31,7 @@ char shaderBasePath[1024] = "../openGLHelper-starterCode";
 
 using namespace std;
 
-int mousePos[2]; // x,y coordinate of the mouse position
+int mousePos[2]; // x,y screen coordinates of the current mouse position
 
 int leftMouseButton = 0; // 1 if pressed, 0 if not 
 int middleMouseButton = 0; // 1 if pressed, 0 if not
@@ -40,29 +40,32 @@ int rightMouseButton = 0; // 1 if pressed, 0 if not
 typedef enum { ROTATE, TRANSLATE, SCALE } CONTROL_STATE;
 CONTROL_STATE controlState = ROTATE;
 
-typedef enum { POINT_MODE, LINE_MODE, SOLID_MODE, SMOOTH_MODE } RENDER_MODE;
-RENDER_MODE renderMode = LINE_MODE;
+// Transformations of the terrain.
+float terrainRotate[3] = { 0.0f, 0.0f, 0.0f };
+// terrainRotate[0] gives the rotation around x-axis (in degrees)
+// terrainRotate[1] gives the rotation around y-axis (in degrees)
+// terrainRotate[2] gives the rotation around z-axis (in degrees)
+float terrainTranslate[3] = { 0.0f, 0.0f, 0.0f };
+float terrainScale[3] = { 1.0f, 1.0f, 1.0f };
 
-// state of the world
-float landRotate[3] = { 0.0f, 0.0f, 0.0f };
-float landTranslate[3] = { 0.0f, 0.0f, 0.0f };
-float landScale[3] = { 1.0f, 1.0f, 1.0f };
-
+// Width and height of the OpenGL window, in pixels.
 int windowWidth = 1280;
 int windowHeight = 720;
 char windowTitle[512] = "CSCI 420 homework I";
 
+// Stores the image loaded from disk.
 ImageIO* heightmapImage;
 
-GLuint triVertexBuffer, triColorVertexBuffer;
-GLuint triVertexArray;
-GLint h_modelViewMatrix, h_projectionMatrix;
-int sizeTri;
-int triangleNum, idx;
+// VBO and VAO handles.
+GLuint vertexPositionAndColorVBO;
+GLuint triangleVAO;
+int numVertices;
+
+// CSCI 420 helper classes.
 OpenGLMatrix matrix;
 BasicPipelineProgram* pipelineProgram;
 
-// write a screenshot to the specified filename
+// Write a screenshot to the specified filename.
 void saveScreenshot(const char* filename)
 {
 	unsigned char* screenshotData = new unsigned char[windowWidth * windowHeight * 3];
@@ -79,41 +82,59 @@ void saveScreenshot(const char* filename)
 
 void displayFunc()
 {
-	// render some stuff...
+	// This function performs the actual rendering.
+
+	// First, clear the screen.
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	// Set up the camera position, focus point, and the up vector.
 	matrix.SetMatrixMode(OpenGLMatrix::ModelView);
 	matrix.LoadIdentity();
-	matrix.LookAt(0, 0, 5, 0, 0, 0, 0, 1, 0);
+	matrix.LookAt(0.0, 0.0, 5.0,
+		0.0, 0.0, 0.0,
+		0.0, 1.0, 0.0);
 
-	float m[16];
+	// In here, you can do additional modeling on the object, such as performing translations, rotations and scales.
+	// ...
+
+	// Read the current modelview and projection matrices.
+	float modelViewMatrix[16];
 	matrix.SetMatrixMode(OpenGLMatrix::ModelView);
-	matrix.GetMatrix(m);
+	matrix.GetMatrix(modelViewMatrix);
 
-	float p[16];
+	float projectionMatrix[16];
 	matrix.SetMatrixMode(OpenGLMatrix::Projection);
-	matrix.GetMatrix(p);
+	matrix.GetMatrix(projectionMatrix);
 
-	// bind shader
-	pipelineProgram->Bind();
+	// Bind the pipeline program.
+	// If an incorrect pipeline program is bound, then the modelview and projection matrices
+	// will be sent to the wrong pipeline program, causing shader 
+	// malfunction (typically, nothing will be shown on the screen).
+	// In this homework, there is only one pipeline program, and it is already bound.
+	// So technically speaking, this call is redundant in hw1.
+	// However, in more complex programs (such as hw2), there will be more than one
+	// pipeline program. And so we will need to bind the pipeline program that we want to use.
+	pipelineProgram->Bind(); // This call is redundant in hw1, but it is good to keep for consistency.
 
+	// Upload the modelview and projection matrices to the GPU.
+	pipelineProgram->SetModelViewMatrix(modelViewMatrix);
+	pipelineProgram->SetProjectionMatrix(projectionMatrix);
 
-	// set variable
-	pipelineProgram->SetModelViewMatrix(m);
-	pipelineProgram->SetProjectionMatrix(p);
+	// Execute the rendering.
+	glBindVertexArray(triangleVAO); // Bind the VAO that we want to render.
+	glDrawArrays(GL_TRIANGLES, 0, numVertices); // Render the VAO, by rendering "numVertices", starting from vertex 0.
 
-	glBindVertexArray(triVertexArray);
-	glDrawArrays(GL_TRIANGLES, 0, sizeTri);
+	// Swap the double-buffers.
 	glutSwapBuffers();
 }
 
 void idleFunc()
 {
-	// do some stuff... 
+	// Do some stuff... 
 
-	// for example, here, you can save the screenshots to disk (to make the animation)
+	// For example, here, you can save the screenshots to disk (to make the animation).
 
-	// make the screen update 
+	// Send the signal that we should call displayFunc.
 	glutPostRedisplay();
 }
 
@@ -121,63 +142,68 @@ void reshapeFunc(int w, int h)
 {
 	glViewport(0, 0, w, h);
 
+	// When the window has been resized, we need to re-set our projection matrix.
 	matrix.SetMatrixMode(OpenGLMatrix::Projection);
 	matrix.LoadIdentity();
-	matrix.Perspective(54.0f, (float)w / (float)h, 0.01f, 1000.0f);
-	matrix.SetMatrixMode(OpenGLMatrix::ModelView);
+	// You need to be careful about setting the zNear and zFar. 
+	// Anything closer than zNear, or further than zFar, will be culled.
+	const float zNear = 0.1f;
+	const float zFar = 10000.0f;
+	const float humanFieldOfView = 60.0f;
+	matrix.Perspective(humanFieldOfView, 1.0f * w / h, zNear, zFar);
 }
 
 void mouseMotionDragFunc(int x, int y)
 {
-	// mouse has moved and one of the mouse buttons is pressed (dragging)
+	// Mouse has moved, and one of the mouse buttons is pressed (dragging).
 
 	// the change in mouse position since the last invocation of this function
 	int mousePosDelta[2] = { x - mousePos[0], y - mousePos[1] };
 
 	switch (controlState)
 	{
-		// translate the landscape
+		// translate the terrain
 	case TRANSLATE:
 		if (leftMouseButton)
 		{
 			// control x,y translation via the left mouse button
-			landTranslate[0] += mousePosDelta[0] * 0.01f;
-			landTranslate[1] -= mousePosDelta[1] * 0.01f;
+			terrainTranslate[0] += mousePosDelta[0] * 0.01f;
+			terrainTranslate[1] -= mousePosDelta[1] * 0.01f;
 		}
 		if (middleMouseButton)
 		{
 			// control z translation via the middle mouse button
-			landTranslate[2] += mousePosDelta[1] * 0.01f;
+			terrainTranslate[2] += mousePosDelta[1] * 0.01f;
 		}
 		break;
 
-		// rotate the landscape
+		// rotate the terrain
 	case ROTATE:
 		if (leftMouseButton)
 		{
 			// control x,y rotation via the left mouse button
-			landRotate[0] += mousePosDelta[1];
-			landRotate[1] += mousePosDelta[0];
+			terrainRotate[0] += mousePosDelta[1];
+			terrainRotate[1] += mousePosDelta[0];
 		}
 		if (middleMouseButton)
 		{
 			// control z rotation via the middle mouse button
-			landRotate[2] += mousePosDelta[1];
+			terrainRotate[2] += mousePosDelta[1];
 		}
 		break;
 
-		// scale the landscape
+		// scale the terrain
 	case SCALE:
 		if (leftMouseButton)
 		{
 			// control x,y scaling via the left mouse button
-			landScale[0] *= 1.0f + mousePosDelta[0] * 0.01f;
-			landScale[1] *= 1.0f - mousePosDelta[1] * 0.01f;
+			terrainScale[0] *= 1.0f + mousePosDelta[0] * 0.01f;
+			terrainScale[1] *= 1.0f - mousePosDelta[1] * 0.01f;
 		}
 		if (middleMouseButton)
 		{
 			// control z scaling via the middle mouse button
-			landScale[2] *= 1.0f - mousePosDelta[1] * 0.01f;
+			terrainScale[2] *= 1.0f - mousePosDelta[1] * 0.01f;
 		}
 		break;
 	}
@@ -189,17 +215,17 @@ void mouseMotionDragFunc(int x, int y)
 
 void mouseMotionFunc(int x, int y)
 {
-	// mouse has moved
-	// store the new mouse position
+	// Mouse has moved.
+	// Store the new mouse position.
 	mousePos[0] = x;
 	mousePos[1] = y;
 }
 
 void mouseButtonFunc(int button, int state, int x, int y)
 {
-	// a mouse button has has been pressed or depressed
+	// A mouse button has has been pressed or depressed.
 
-	// keep track of the mouse button state, in leftMouseButton, middleMouseButton, rightMouseButton variables
+	// Keep track of the mouse button state, in leftMouseButton, middleMouseButton, rightMouseButton variables.
 	switch (button)
 	{
 	case GLUT_LEFT_BUTTON:
@@ -215,7 +241,7 @@ void mouseButtonFunc(int button, int state, int x, int y)
 		break;
 	}
 
-	// keep track of whether CTRL and SHIFT keys are pressed
+	// Keep track of whether CTRL and SHIFT keys are pressed.
 	switch (glutGetModifiers())
 	{
 	case GLUT_ACTIVE_CTRL:
@@ -226,13 +252,13 @@ void mouseButtonFunc(int button, int state, int x, int y)
 		controlState = SCALE;
 		break;
 
-		// if CTRL and SHIFT are not pressed, we are in rotate mode
+		// If CTRL and SHIFT are not pressed, we are in rotate mode.
 	default:
 		controlState = ROTATE;
 		break;
 	}
 
-	// store the new mouse position
+	// Store the new mouse position.
 	mousePos[0] = x;
 	mousePos[1] = y;
 }
@@ -250,32 +276,15 @@ void keyboardFunc(unsigned char key, int x, int y)
 		break;
 
 	case 'x':
-		// take a screenshot
+		// Take a screenshot.
 		saveScreenshot("screenshot.jpg");
-		break;
-	case '1':
-		renderMode = POINT_MODE;
-		break;
-	case '2':
-		renderMode = LINE_MODE;
-		break;
-	case '3':
-		renderMode = SOLID_MODE;
-		break;
-	case '4':
-		renderMode = SMOOTH_MODE;
 		break;
 	}
 }
 
-void handleRenderMode()
-{
-
-}
-
 void initScene(int argc, char* argv[])
 {
-	// load the image from a jpeg disk file to main memory
+	// Load the image from a jpeg disk file into main memory.
 	heightmapImage = new ImageIO();
 	if (heightmapImage->loadJPEG(argv[1]) != ImageIO::OK)
 	{
@@ -283,76 +292,72 @@ void initScene(int argc, char* argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	// Set the background color.
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Black color.
+
+	// Enable z-buffering (i.e., hidden surface removal using the z-buffer algorithm).
 	glEnable(GL_DEPTH_TEST);
 
-	// modify the following code accordingly
-	unsigned char* pixels = heightmapImage->getPixels();
-	int imgH = heightmapImage->getHeight();
-	int imgW = heightmapImage->getWidth();
-	triangleNum = imgH * imgW;
-	float maxH = 100.0f;
-
-	float* triangle = new float[3 * triangleNum];
-	float* color = new float[4 * triangleNum];
-	for (int x = 0; x < imgW; x++)
-	{
-		for (int y = 0; y < imgH; y++)
-		{
-			int triangleIdx = (x + imgW * y) * 3;
-			float mapH = heightmapImage->getPixel(x, y, 0);
-			triangle[triangleIdx + 1] = mapH / maxH;
-			triangle[triangleIdx] = static_cast<float>(y) / imgH;
-			triangle[triangleIdx + 2] = static_cast<float>(x) / imgW;
-
-			int colorIdx = (x * imgW * y) * 4;
-			color[colorIdx] = triangle[triangleIdx] + 0.5f;
-			color[colorIdx + 1] = triangle[triangleIdx + 1];
-			color[colorIdx + 2] = triangle[triangleIdx + 2] + 0.5f;
-			color[colorIdx + 3] = 1.0f;
-		}
-	}
-
-	glGenBuffers(1, &triVertexBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, triVertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (triangleNum * 3), triangle,
-		GL_STATIC_DRAW);
-
-	glGenBuffers(1, &triColorVertexBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, triColorVertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (triangleNum * 4), color, GL_STATIC_DRAW);
-
-	// init pipeline program
+	// Create and bind the pipeline program. This operation must be performed BEFORE we initialize any VAOs.
 	pipelineProgram = new BasicPipelineProgram;
 	int ret = pipelineProgram->Init(shaderBasePath);
-	if (ret != 0) abort();
+	if (ret != 0)
+	{
+		abort();
+	}
 	pipelineProgram->Bind();
 
-	// some stuff with projection and modelView
-	GLuint program = pipelineProgram->GetProgramHandle();
-	h_modelViewMatrix = glGetUniformLocation(program, "modelViewMatrix");
-	h_projectionMatrix = glGetUniformLocation(program, "projectionMatrix");
+	// Prepare the triangle position and color data for the VBO. 
+	// The code below sets up a single triangle (3 vertices).
+	// The triangle will be rendered using GL_TRIANGLES (in displayFunc()).
 
-	// generate and bind vbo with vao
-	glGenVertexArrays(1, &triVertexArray);
-	glBindVertexArray(triVertexArray);
-	glBindBuffer(GL_ARRAY_BUFFER, triVertexBuffer);
+	numVertices = 3; // This must be a global variable, so that we know how many vertices to render in glDrawArrays.
 
-	// vao of position 
-	GLuint loc =
-		glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position");
-	glEnableVertexAttribArray(loc);
-	glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, (const void*)0);
+	// Vertex positions.
+	float* positions = (float*)malloc(numVertices * 3 * sizeof(float)); // 3 floats per vertex, i.e., x,y,z
+	positions[0] = 0.0; positions[1] = 0.0; positions[2] = 0.0; // (x,y,z) coordinates of the first vertex
+	positions[3] = 0.0; positions[4] = 1.0; positions[5] = 0.0; // (x,y,z) coordinates of the second vertex
+	positions[6] = 1.0; positions[7] = 0.0; positions[8] = 0.0; // (x,y,z) coordinates of the third vertex
 
-	// vao of color
-	glBindBuffer(GL_ARRAY_BUFFER, triColorVertexBuffer);
-	loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color");
-	glEnableVertexAttribArray(loc);
-	glVertexAttribPointer(loc, 4, GL_FLOAT, GL_FALSE, 0, (const void*)0);
+	// Vertex colors.
+	float* colors = (float*)malloc(numVertices * 4 * sizeof(float)); // 4 floats per vertex, i.e., r,g,b,a
+	colors[0] = 0.0; colors[1] = 0.0;  colors[2] = 1.0;  colors[3] = 1.0; // (r,g,b,a) channels of the first vertex
+	colors[4] = 1.0; colors[5] = 0.0;  colors[6] = 0.0;  colors[7] = 1.0; // (r,g,b,a) channels of the second vertex
+	colors[8] = 0.0; colors[9] = 1.0; colors[10] = 0.0; colors[11] = 1.0; // (r,g,b,a) channels of the third vertex
 
-	glEnable(GL_DEPTH_TEST);
-	sizeTri = 3;
+	// Create the VBOs. There is a single VBO in this example. This operation must be performed BEFORE we initialize any VAOs.
+	glGenBuffers(1, &vertexPositionAndColorVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexPositionAndColorVBO);
+	// First, allocate an empty VBO of the correct size to hold positions and colors.
+	const int numBytesInPositions = numVertices * 3 * sizeof(float);
+	const int numBytesInColors = numVertices * 4 * sizeof(float);
+	glBufferData(GL_ARRAY_BUFFER, numBytesInPositions + numBytesInColors, nullptr, GL_STATIC_DRAW);
+	// Next, write the position and color data into the VBO.
+	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositions, positions); // The VBO starts with positions.
+	glBufferSubData(GL_ARRAY_BUFFER, numBytesInPositions, numBytesInColors, colors); // The colors are written after the positions.
 
+	// Create the VAOs. There is a single VAO in this example.
+	glGenVertexArrays(1, &triangleVAO);
+	glBindVertexArray(triangleVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexPositionAndColorVBO); // The VBO that we bind here will be used in the glVertexAttribPointer calls below. If we forget to bind the VBO here, the program will malfunction.
+
+	// Set up the relationship between the "position" shader variable and the VAO.
+	const GLuint locationOfPosition = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
+	glEnableVertexAttribArray(locationOfPosition); // Must always enable the vertex attribute. By default, it is disabled.
+	const int stride = 0; // Stride is 0, i.e., data is tightly packed in the VBO.
+	const GLboolean normalized = GL_FALSE; // Normalization is off.
+	glVertexAttribPointer(locationOfPosition, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
+
+	// Set up the relationship between the "color" shader variable and the VAO.
+	const GLuint locationOfColor = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
+	glEnableVertexAttribArray(locationOfColor); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfColor, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositions); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
+
+	// We don't need this data any more, as we have already uploaded it to the VBO. And so we can destroy it, to avoid a memory leak.
+	free(positions);
+	free(colors);
+
+	// Check for any OpenGL errors.
 	std::cout << "GL error: " << glGetError() << std::endl;
 }
 
@@ -361,7 +366,6 @@ int main(int argc, char* argv[])
 	if (argc != 2)
 	{
 		cout << "The arguments are incorrect." << endl;
-		cout << argc << " " << argv[0] << endl;
 		cout << "usage: ./hw1 <heightmap file>" << endl;
 		exit(EXIT_FAILURE);
 	}
@@ -418,11 +422,9 @@ int main(int argc, char* argv[])
 	}
 #endif
 
-	// do initialization
+	// Perform the initialization.
 	initScene(argc, argv);
 
-	// sink forever into the glut loop
+	// Sink forever into the GLUT loop.
 	glutMainLoop();
-	}
-
-
+}
