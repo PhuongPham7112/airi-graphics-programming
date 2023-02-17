@@ -38,8 +38,10 @@ int middleMouseButton = 0; // 1 if pressed, 0 if not
 int rightMouseButton = 0; // 1 if pressed, 0 if not
 
 typedef enum { ROTATE, TRANSLATE, SCALE } CONTROL_STATE;
-typedef enum { POINTS, LINES, SOLID, SMOOTH } RENDER_MODE;
 CONTROL_STATE controlState = ROTATE;
+
+typedef enum { POINT_MODE, LINE_MODE, SOLID_MODE, SMOOTH_MODE } RENDER_MODE;
+RENDER_MODE renderMode = LINE_MODE;
 
 // state of the world
 float landRotate[3] = { 0.0f, 0.0f, 0.0f };
@@ -252,14 +254,23 @@ void keyboardFunc(unsigned char key, int x, int y)
 		saveScreenshot("screenshot.jpg");
 		break;
 	case '1':
+		renderMode = POINT_MODE;
 		break;
 	case '2':
+		renderMode = LINE_MODE;
 		break;
 	case '3':
+		renderMode = SOLID_MODE;
 		break;
 	case '4':
+		renderMode = SMOOTH_MODE;
 		break;
 	}
+}
+
+void handleRenderMode()
+{
+
 }
 
 void initScene(int argc, char* argv[])
@@ -272,36 +283,44 @@ void initScene(int argc, char* argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	glClearColor(0.0f, 1.0f, 0.0f, 0.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glEnable(GL_DEPTH_TEST);
 
 	// modify the following code accordingly
+	unsigned char* pixels = heightmapImage->getPixels();
 	int imgH = heightmapImage->getHeight();
 	int imgW = heightmapImage->getWidth();
 	triangleNum = imgH * imgW;
+	float maxH = 100.0f;
 
-	float triangles[triangleNum * 3];
-	float colors[triangleNum * 4];
-
-	glm::vec3 triangle[triangleNum * 3];
-	glm::vec4 color[triangleNum * 4];
-
-	for (int i = 0; i < imgH; i++)
+	float* triangle = new float[3 * triangleNum];
+	float* color = new float[4 * triangleNum];
+	for (int x = 0; x < imgW; x++)
 	{
-		for (int j = 0; j < imgW; j++)
+		for (int y = 0; y < imgH; y++)
 		{
+			int triangleIdx = (x + imgW * y) * 3;
+			float mapH = heightmapImage->getPixel(x, y, 0);
+			triangle[triangleIdx + 1] = mapH / maxH;
+			triangle[triangleIdx] = static_cast<float>(y) / imgH;
+			triangle[triangleIdx + 2] = static_cast<float>(x) / imgW;
 
+			int colorIdx = (x * imgW * y) * 4;
+			color[colorIdx] = triangle[triangleIdx] + 0.5f;
+			color[colorIdx + 1] = triangle[triangleIdx + 1];
+			color[colorIdx + 2] = triangle[triangleIdx + 2] + 0.5f;
+			color[colorIdx + 3] = 1.0f;
 		}
 	}
 
 	glGenBuffers(1, &triVertexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, triVertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * (triangleNum * 3), triangle,
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (triangleNum * 3), triangle,
 		GL_STATIC_DRAW);
 
 	glGenBuffers(1, &triColorVertexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, triColorVertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec4) * (triangleNum * 4), color, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * (triangleNum * 4), color, GL_STATIC_DRAW);
 
 	// init pipeline program
 	pipelineProgram = new BasicPipelineProgram;
@@ -319,12 +338,13 @@ void initScene(int argc, char* argv[])
 	glBindVertexArray(triVertexArray);
 	glBindBuffer(GL_ARRAY_BUFFER, triVertexBuffer);
 
-	// vao of position and color
+	// vao of position 
 	GLuint loc =
 		glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position");
 	glEnableVertexAttribArray(loc);
 	glVertexAttribPointer(loc, 3, GL_FLOAT, GL_FALSE, 0, (const void*)0);
 
+	// vao of color
 	glBindBuffer(GL_ARRAY_BUFFER, triColorVertexBuffer);
 	loc = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color");
 	glEnableVertexAttribArray(loc);
@@ -403,6 +423,6 @@ int main(int argc, char* argv[])
 
 	// sink forever into the glut loop
 	glutMainLoop();
-}
+	}
 
 
