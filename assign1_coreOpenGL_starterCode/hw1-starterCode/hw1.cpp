@@ -289,7 +289,6 @@ void initScene(int argc, char* argv[])
 	// Create the VAOs. There is a single VAO in this example.
 	glGenVertexArrays(1, &pointVAO);
 	glBindVertexArray(pointVAO);
-	//glBindBuffer(GL_ARRAY_BUFFER, pointVBO); // The VBO that we bind here will be used in the glVertexAttribPointer calls below. If we forget to bind the VBO here, the program will malfunction.
 
 	// LINE MODE
 	glGenBuffers(1, &lineVBO);
@@ -304,9 +303,7 @@ void initScene(int argc, char* argv[])
 	// Create the VAOs. There is a single VAO in this example.
 	glGenVertexArrays(1, &lineVAO);
 	glBindVertexArray(lineVAO);
-	//glBindBuffer(GL_ARRAY_BUFFER, lineVBO); // The VBO that we bind here will be used in the glVertexAttribPointer calls below. If we forget to bind the VBO here, the program will malfunction.
 
-	// We don't need this data any more, as we have already uploaded it to the VBO. And so we can destroy it, to avoid a memory leak.
 	// Check for any OpenGL errors.
 	std::cout << "GL error: " << glGetError() << std::endl;
 }
