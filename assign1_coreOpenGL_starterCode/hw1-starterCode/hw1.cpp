@@ -3,7 +3,7 @@
   Assignment 1: Height Fields with Shaders.
   C++ starter code
 
-  Student username: <type your USC username here>
+  Student username: phuongp
 */
 
 #include "basicPipelineProgram.h"
@@ -11,7 +11,7 @@
 #include "imageIO.h"
 #include "openGLHeader.h"
 #include "glutHeader.h"
-
+#include <vector>
 #include <iostream>
 #include <cstring>
 
@@ -41,7 +41,7 @@ typedef enum { ROTATE, TRANSLATE, SCALE } CONTROL_STATE;
 CONTROL_STATE controlState = ROTATE;
 
 typedef enum { POINT_MODE, LINE_MODE, SOLID_MODE } RENDER_STATE;
-RENDER_STATE renderState = LINE_MODE;
+RENDER_STATE renderState = POINT_MODE;
 
 // Transformations of the terrain.
 float terrainRotate[3] = { 0.0f, 0.0f, 0.0f };
@@ -55,19 +55,36 @@ float terrainScale[3] = { 1.0f, 1.0f, 1.0f };
 int windowWidth = 1280;
 int windowHeight = 720;
 char windowTitle[512] = "CSCI 420 homework I";
+int numBytesInPositions;
+int numBytesInColors;
 
 // Width and height of the image
 int imageWidth;
 int imageHeight;
-float scale = 0.05f;
+float scale = 0.005f;
 
 // Stores the image loaded from disk.
 ImageIO* heightmapImage;
 
-// VBO and VAO handles.
+// starter VBO and VAO
 GLuint vertexPositionAndColorVBO;
 GLuint triangleVAO;
 int numVertices;
+
+// VBO and VAO for point mode
+GLuint pointVBO;
+GLuint pointVAO;
+int pointNumVertices;
+
+// VBO and VAO for line mode
+GLuint lineVBO;
+GLuint lineVAO;
+int lineNumVertices;
+
+// VBO and VAO for solid mode
+GLuint solidVBO;
+GLuint solidVAO;
+int solidNumVertices;
 
 // CSCI 420 helper classes.
 OpenGLMatrix matrix;
@@ -88,19 +105,37 @@ void saveScreenshot(const char* filename)
 	delete[] screenshotData;
 }
 
-// Switch rendering mode
-void switchRenderState()
+void renderPointMode()
 {
-	switch (renderState)
-	{
-	case POINT_MODE:
-		break;
-	case LINE_MODE:
-		break;
-	case SOLID_MODE:
-		break;
-	}
+	// Set up the relationship between the "position" shader variable and the VAO.
+	const GLuint locationOfPosition = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
+	glEnableVertexAttribArray(locationOfPosition); // Must always enable the vertex attribute. By default, it is disabled.
+	const int stride = 0; // Stride is 0, i.e., data is tightly packed in the VBO.
+	const GLboolean normalized = GL_FALSE; // Normalization is off.
+	glVertexAttribPointer(locationOfPosition, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
+
+	// Set up the relationship between the "color" shader variable and the VAO.
+	const GLuint locationOfColor = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
+	glEnableVertexAttribArray(locationOfColor); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfColor, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositions); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
+
+	// Execute rendering
+	glBindVertexArray(pointVAO);
+	glDrawArrays(GL_POINTS, 0, pointNumVertices * sizeof(float));
 }
+
+void renderLineMode()
+{}
+
+void renderSolidMode()
+{}
+
+void initVertices()
+{}
+
+void initVBOs()
+{}
+
 // initialize the scene
 void initScene(int argc, char* argv[])
 {
@@ -132,12 +167,12 @@ void initScene(int argc, char* argv[])
 	// The triangle will be rendered using GL_TRIANGLES (in displayFunc()).
 	imageWidth = heightmapImage->getWidth();
 	imageHeight = heightmapImage->getHeight();
-	numVertices = imageWidth * imageHeight; // This must be a global variable, so that we know how many vertices to render in glDrawArrays.
+	pointNumVertices = imageWidth * imageHeight; // This must be a global variable, so that we know how many vertices to render in glDrawArrays.
 
 	// Vertex positions.
-	float* positions = (float*)malloc(numVertices * 3 * sizeof(float)); // 3 floats per vertex, i.e., x,y,z
+	float* positions = (float*)malloc(pointNumVertices * 3 * sizeof(float)); // 3 floats per vertex, i.e., x,y,z
 	// Vertex colors.
-	float* colors = (float*)malloc(numVertices * 4 * sizeof(float)); // 4 floats per vertex, i.e., r,g,b,a
+	float* colors = (float*)malloc(pointNumVertices * 4 * sizeof(float)); // 4 floats per vertex, i.e., r,g,b,a
 
 	for (int x = 0; x < imageWidth; x++)
 	{
@@ -157,41 +192,32 @@ void initScene(int argc, char* argv[])
 		}
 	}
 
-	//positions[0] = 0.0; positions[1] = 0.0; positions[2] = 0.0; // (x,y,z) coordinates of the first vertex
-	//positions[3] = 0.0; positions[4] = 1.0; positions[5] = 0.0; // (x,y,z) coordinates of the second vertex
-	//positions[6] = 1.0; positions[7] = 0.0; positions[8] = 0.0; // (x,y,z) coordinates of the third vertex
-
-	//colors[0] = 0.0; colors[1] = 0.0;  colors[2] = 1.0;  colors[3] = 1.0; // (r,g,b,a) channels of the first vertex
-	//colors[4] = 1.0; colors[5] = 0.0;  colors[6] = 0.0;  colors[7] = 1.0; // (r,g,b,a) channels of the second vertex
-	//colors[8] = 0.0; colors[9] = 1.0; colors[10] = 0.0; colors[11] = 1.0; // (r,g,b,a) channels of the third vertex
-
-	// Create the VBOs. There is a single VBO in this example. This operation must be performed BEFORE we initialize any VAOs.
-	glGenBuffers(1, &vertexPositionAndColorVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexPositionAndColorVBO);
+	// POINT_MODE
+	// Create the VBOs. This operation must be performed BEFORE we initialize any VAOs.
+	glGenBuffers(1, &pointVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
 	// First, allocate an empty VBO of the correct size to hold positions and colors.
-	const int numBytesInPositions = numVertices * 3 * sizeof(float);
-	const int numBytesInColors = numVertices * 4 * sizeof(float);
+	numBytesInPositions = pointNumVertices * 3 * sizeof(float);
+	numBytesInColors = pointNumVertices * 4 * sizeof(float);
 	glBufferData(GL_ARRAY_BUFFER, numBytesInPositions + numBytesInColors, nullptr, GL_STATIC_DRAW);
 	// Next, write the position and color data into the VBO.
 	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositions, positions); // The VBO starts with positions.
 	glBufferSubData(GL_ARRAY_BUFFER, numBytesInPositions, numBytesInColors, colors); // The colors are written after the positions.
 
 	// Create the VAOs. There is a single VAO in this example.
-	glGenVertexArrays(1, &triangleVAO);
-	glBindVertexArray(triangleVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexPositionAndColorVBO); // The VBO that we bind here will be used in the glVertexAttribPointer calls below. If we forget to bind the VBO here, the program will malfunction.
+	glGenVertexArrays(1, &pointVAO);
+	glBindVertexArray(pointVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, pointVBO); // The VBO that we bind here will be used in the glVertexAttribPointer calls below. If we forget to bind the VBO here, the program will malfunction.
 
-	// Set up the relationship between the "position" shader variable and the VAO.
-	const GLuint locationOfPosition = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
-	glEnableVertexAttribArray(locationOfPosition); // Must always enable the vertex attribute. By default, it is disabled.
-	const int stride = 0; // Stride is 0, i.e., data is tightly packed in the VBO.
-	const GLboolean normalized = GL_FALSE; // Normalization is off.
-	glVertexAttribPointer(locationOfPosition, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
+	// LINE_MODE
+	// Create the VBOs. This operation must be performed BEFORE we initialize any VAOs.
+	glGenBuffers(1, &lineVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+	// Create the VAOs. There is a single VAO in this example.
+	glGenVertexArrays(1, &lineVAO);
+	glBindVertexArray(lineVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, lineVBO); // The VBO that we bind here will be used in the glVertexAttribPointer calls below. If we forget to bind the VBO here, the program will malfunction.
 
-	// Set up the relationship between the "color" shader variable and the VAO.
-	const GLuint locationOfColor = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
-	glEnableVertexAttribArray(locationOfColor); // Must always enable the vertex attribute. By default, it is disabled.
-	glVertexAttribPointer(locationOfColor, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositions); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
 
 	// We don't need this data any more, as we have already uploaded it to the VBO. And so we can destroy it, to avoid a memory leak.
 	free(positions);
@@ -201,19 +227,16 @@ void initScene(int argc, char* argv[])
 	std::cout << "GL error: " << glGetError() << std::endl;
 }
 
-
 void displayFunc()
 {
 	// This function performs the actual rendering.
-
 	// First, clear the screen.
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 	// Set up the camera position, focus point, and the up vector.
 	matrix.SetMatrixMode(OpenGLMatrix::ModelView);
 	matrix.LoadIdentity();
 	matrix.LookAt(0.0, 0.0, 5.0,
-		0.0, 0.0, 0.0,
+		0.0, 1.0, 0.0,
 		0.0, 1.0, 0.0);
 
 	// In here, you can do additional modeling on the object, such as performing translations, rotations and scales.
@@ -228,24 +251,24 @@ void displayFunc()
 	matrix.SetMatrixMode(OpenGLMatrix::Projection);
 	matrix.GetMatrix(projectionMatrix);
 
-	// Bind the pipeline program.
-	// If an incorrect pipeline program is bound, then the modelview and projection matrices
-	// will be sent to the wrong pipeline program, causing shader 
-	// malfunction (typically, nothing will be shown on the screen).
-	// In this homework, there is only one pipeline program, and it is already bound.
-	// So technically speaking, this call is redundant in hw1.
-	// However, in more complex programs (such as hw2), there will be more than one
-	// pipeline program. And so we will need to bind the pipeline program that we want to use.
 	pipelineProgram->Bind(); // This call is redundant in hw1, but it is good to keep for consistency.
 
 	// Upload the modelview and projection matrices to the GPU.
 	pipelineProgram->SetModelViewMatrix(modelViewMatrix);
 	pipelineProgram->SetProjectionMatrix(projectionMatrix);
 
-	// Execute the rendering.
-	glBindVertexArray(triangleVAO); // Bind the VAO that we want to render.
-	glDrawArrays(GL_TRIANGLES, 0, numVertices); // Render the VAO, by rendering "numVertices", starting from vertex 0.
-
+	switch (renderState)
+	{
+	case POINT_MODE:
+		renderPointMode();
+		break;
+	case LINE_MODE:
+		renderLineMode();
+		break;
+	case SOLID_MODE:
+		renderSolidMode();
+		break;
+	}
 	// Swap the double-buffers.
 	glutSwapBuffers();
 }
@@ -401,6 +424,15 @@ void keyboardFunc(unsigned char key, int x, int y)
 		// Take a screenshot.
 		saveScreenshot("screenshot.jpg");
 		break;
+	case '1':
+		renderState = POINT_MODE;
+		break;
+	case '2':
+		renderState = LINE_MODE;
+		break;
+	case '3':
+		renderState = SOLID_MODE;
+		break;
 	}
 }
 
@@ -471,4 +503,4 @@ int main(int argc, char* argv[])
 
 	// Sink forever into the GLUT loop.
 	glutMainLoop();
-	}
+}
