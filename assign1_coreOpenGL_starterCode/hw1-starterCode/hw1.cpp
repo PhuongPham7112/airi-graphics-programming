@@ -239,35 +239,39 @@ void initScene(int argc, char* argv[])
 
 			// LINE MODE:
 			linePos.insert(linePos.end(), centerPos, centerPos + numVertices);
-			if (y < imageHeight)
+			lineCol.insert(lineCol.end(), centerCol, centerCol + numColors);
+			if (y + 1 < imageHeight - 1)
+			{
 				linePos.insert(linePos.end(), abovePos, abovePos + numVertices);
-			linePos.insert(linePos.end(), centerPos, centerPos + numVertices);
-			if (x < imageWidth)
-				linePos.insert(linePos.end(), rightPos, rightPos + numVertices);
-
-			lineCol.insert(lineCol.end(), centerCol, centerCol + numColors);
-			if (y < imageHeight)
 				lineCol.insert(lineCol.end(), aboveCol, aboveCol + numColors);
+			}
+			linePos.insert(linePos.end(), centerPos, centerPos + numVertices);
 			lineCol.insert(lineCol.end(), centerCol, centerCol + numColors);
-			if (x < imageWidth)
+			if (x + 1 < imageWidth - 1)
+			{
+				linePos.insert(linePos.end(), rightPos, rightPos + numVertices);
 				lineCol.insert(lineCol.end(), rightCol, rightCol + numColors);
+			}
 
 			// SOLID MODE:
-			// first triangle
-			solidPos.insert(solidPos.end(), centerPos, centerPos + numVertices);
-			solidPos.insert(solidPos.end(), abovePos, abovePos + numVertices);
-			solidPos.insert(solidPos.end(), rightPos, rightPos + numVertices);
-			// second triangle
-			solidPos.insert(solidPos.end(), aboveRightPos, aboveRightPos + numVertices);
-			solidPos.insert(solidPos.end(), abovePos, abovePos + numVertices);
-			solidPos.insert(solidPos.end(), rightPos, rightPos + numVertices);
-			// color
-			solidCol.insert(solidCol.end(), centerCol, centerCol + 4);
-			solidCol.insert(solidCol.end(), aboveCol, aboveCol + 4);
-			solidCol.insert(solidCol.end(), rightCol, rightCol + 4);
-			solidCol.insert(solidCol.end(), aboveRightCol, aboveRightCol + 4);
-			solidCol.insert(solidCol.end(), aboveCol, aboveCol + 4);
-			solidCol.insert(solidCol.end(), rightCol, rightCol + 4);
+			if (y + 1 < imageHeight - 1 && x + 1 < imageWidth - 1)
+			{
+				// first triangle
+				solidPos.insert(solidPos.end(), centerPos, centerPos + numVertices);
+				solidPos.insert(solidPos.end(), abovePos, abovePos + numVertices);
+				solidPos.insert(solidPos.end(), rightPos, rightPos + numVertices);
+				// second triangle
+				solidPos.insert(solidPos.end(), aboveRightPos, aboveRightPos + numVertices);
+				solidPos.insert(solidPos.end(), abovePos, abovePos + numVertices);
+				solidPos.insert(solidPos.end(), rightPos, rightPos + numVertices);
+				// color
+				solidCol.insert(solidCol.end(), centerCol, centerCol + 4);
+				solidCol.insert(solidCol.end(), aboveCol, aboveCol + 4);
+				solidCol.insert(solidCol.end(), rightCol, rightCol + 4);
+				solidCol.insert(solidCol.end(), aboveRightCol, aboveRightCol + 4);
+				solidCol.insert(solidCol.end(), aboveCol, aboveCol + 4);
+				solidCol.insert(solidCol.end(), rightCol, rightCol + 4);
+			}
 		}
 	}
 
