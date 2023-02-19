@@ -52,6 +52,7 @@ float terrainTranslate[3] = { 0.0f, 0.0f, 0.0f };
 float terrainScale[3] = { 1.0f, 1.0f, 1.0f };
 
 // Width and height of the OpenGL window, in pixels.
+GLint shaderMode = 0;
 int windowWidth = 1280;
 int windowHeight = 720;
 char windowTitle[512] = "CSCI 420 homework I";
@@ -88,7 +89,12 @@ GLuint solidVAO;
 int solidNumVertices;
 
 // VBO and VAO for smoothing mode
-
+std::vector<float> leftPos, leftCol;
+std::vector<float> rightPos, rightCol;
+std::vector<float> abovePos, aboveCol;
+std::vector<float> belowPos, belowCol;
+GLuint leftVBO, rightVBO aboveVBO, belowVBO;
+GLuint smoothVAO;
 
 // CSCI 420 helper classes.
 OpenGLMatrix matrix;
@@ -203,6 +209,8 @@ void initVBOs()
 	// Create the VAOs. There is a single VAO in this example.
 	glGenVertexArrays(1, &solidVAO);
 	glBindVertexArray(solidVAO);
+	// Set up the relationship mode
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
 	// Set up the relationship between the "position" shader variable and the VAO.
 	const GLuint locationOfPositionSolid = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
 	glEnableVertexAttribArray(locationOfPositionSolid); // Must always enable the vertex attribute. By default, it is disabled.
@@ -560,13 +568,19 @@ void keyboardFunc(unsigned char key, int x, int y)
 		saveScreenshot("screenshot.jpg");
 		break;
 	case '1':
+		glUniform1i(shaderMode, (GLint)0);
 		renderState = POINT_MODE;
 		break;
 	case '2':
+		glUniform1i(shaderMode, (GLint)0);
 		renderState = LINE_MODE;
 		break;
 	case '3':
+		glUniform1i(shaderMode, (GLint)0);
 		renderState = SOLID_MODE;
+		break;
+	case '4':
+		glUniform1i(shaderMode, (GLint)1);
 		break;
 	}
 }
