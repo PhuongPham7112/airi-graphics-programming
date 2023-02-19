@@ -361,6 +361,12 @@ void displayFunc()
 
 	// In here, you can do additional modeling on the object, such as performing translations, rotations and scales.
 	// ...
+	matrix.Rotate(terrainRotate[0], 1.0f, 0.0f, 0.0f);
+	matrix.Rotate(terrainRotate[1], 0.0f, 1.0f, 0.0f);
+	matrix.Rotate(terrainRotate[2], 0.0f, 0.0f, 1.0f);
+
+	matrix.Translate(terrainTranslate[0], terrainTranslate[1], terrainTranslate[2]);
+	matrix.Scale(terrainScale[0], terrainScale[1], terrainScale[2]);
 
 	// Read the current modelview and projection matrices.
 	float modelViewMatrix[16];
