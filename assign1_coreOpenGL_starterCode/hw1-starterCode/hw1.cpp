@@ -189,9 +189,9 @@ void initScene(int argc, char* argv[])
 			centerPos[1] = scale * heightmapImage->getPixel(x, y, 0);
 			centerPos[2] = static_cast<float>(x) / imageWidth;
 
-			centerCol[0] = 1.0f;
-			centerCol[1] = 1.0f;
-			centerCol[2] = 1.0f;
+			centerCol[0] = static_cast<float>(y) / imageHeight - 0.5f;
+			centerCol[1] = scale * heightmapImage->getPixel(x, y, 0);
+			centerCol[2] = static_cast<float>(x) / imageWidth - 0.5f;
 			centerCol[3] = 1.0f;
 
 			// above point: (i, j + 1)
@@ -202,9 +202,9 @@ void initScene(int argc, char* argv[])
 			abovePos[1] = scale * heightmapImage->getPixel(x, y + 1, 0);
 			abovePos[2] = centerPos[2];
 
-			aboveCol[0] = 1.0f;
-			aboveCol[1] = 1.0f;
-			aboveCol[2] = 1.0f;
+			aboveCol[0] = static_cast<float>(y + 1) / imageHeight - 0.5f;
+			aboveCol[1] = scale * heightmapImage->getPixel(x, y + 1, 0);
+			aboveCol[2] = static_cast<float>(x) / imageWidth - 0.5f;
 			aboveCol[3] = 1.0f;
 
 			// right: (i + 1, j)
@@ -215,9 +215,9 @@ void initScene(int argc, char* argv[])
 			rightPos[1] = scale * heightmapImage->getPixel(x + 1, y, 0);
 			rightPos[2] = static_cast<float>(x + 1) / imageWidth;
 
-			rightCol[0] = 1.0f;
-			rightCol[1] = 1.0f;
-			rightCol[2] = 1.0f;
+			rightCol[0] = static_cast<float>(y) / imageHeight - 0.5f;
+			rightCol[1] = scale * heightmapImage->getPixel(x + 1, y, 0);
+			rightCol[2] = static_cast<float>(x + 1) / imageWidth - 0.5f;
 			rightCol[3] = 1.0f;
 
 			// right and above: (i + 1, j + 1)
@@ -228,9 +228,9 @@ void initScene(int argc, char* argv[])
 			aboveRightPos[1] = scale * heightmapImage->getPixel(x + 1, y + 1, 0);
 			aboveRightPos[2] = rightPos[2];
 
-			aboveRightCol[0] = 1.0f;
-			aboveRightCol[1] = 1.0f;
-			aboveRightCol[2] = 1.0f;
+			aboveRightCol[0] = static_cast<float>(y + 1) / imageHeight - 0.5f;
+			aboveRightCol[1] = scale * heightmapImage->getPixel(x + 1, y + 1, 0);
+			aboveRightCol[2] = static_cast<float>(x + 1) / imageWidth - 0.5f;
 			aboveRightCol[3] = 1.0f;
 
 			// POINT MODE:
