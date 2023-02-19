@@ -55,13 +55,13 @@ float terrainScale[3] = { 1.0f, 1.0f, 1.0f };
 int windowWidth = 1280;
 int windowHeight = 720;
 char windowTitle[512] = "CSCI 420 homework I";
-int numBytesInPositions, numBytesInPositionsLine, numBytesInPositionSolid;
+int numBytesInPositions, numBytesInPositionsLine, numBytesInPositionsSolid;
 int numBytesInColors, numBytesInColorsLine, numBytesInColorsSolid;
 
 // Width and height of the image
 int imageWidth;
 int imageHeight;
-float scale = 0.004f;
+float scale = 0.002f;
 
 // Stores the image loaded from disk.
 ImageIO* heightmapImage;
@@ -81,6 +81,8 @@ GLuint lineVAO;
 int lineNumVertices;
 
 // VBO and VAO for solid mode
+std::vector<float> solidPos;
+std::vector<float> solidCol;
 GLuint solidVBO;
 GLuint solidVAO;
 int solidNumVertices;
@@ -107,21 +109,29 @@ void saveScreenshot(const char* filename)
 void renderPointMode()
 {
 	// Execute rendering
+	int numVertex = pointPos.size() / 3;
 	glBindVertexArray(pointVAO);
-	glDrawArrays(GL_POINTS, 0, pointPos.size());
+	glDrawArrays(GL_POINTS, 0, numVertex);
 	glBindVertexArray(0); // unbind the VAO
 }
 
 void renderLineMode()
 {
 	// Execute rendering
+	int numVertex = linePos.size() / 3;
 	glBindVertexArray(lineVAO);
-	glDrawArrays(GL_LINES, 0, linePos.size());
+	glDrawArrays(GL_LINES, 0, numVertex);
 	glBindVertexArray(0); // unbind the VAO
 }
 
 void renderSolidMode()
-{}
+{
+	// Execute rendering
+	int numVertex = solidPos.size() / 3;
+	glBindVertexArray(solidVAO);
+	glDrawArrays(GL_TRIANGLES, 0, numVertex);
+	glBindVertexArray(0); // unbind the VAO
+}
 
 void initVertices()
 {}
@@ -224,25 +234,40 @@ void initScene(int argc, char* argv[])
 			aboveRightCol[3] = 1.0f;
 
 			// POINT MODE:
-			pointPos.insert(pointPos.end(), centerPos, centerPos + 3);
-			pointCol.insert(pointCol.end(), centerCol, centerCol + 4);
+			pointPos.insert(pointPos.end(), centerPos, centerPos + numVertices);
+			pointCol.insert(pointCol.end(), centerCol, centerCol + numColors);
 
 			// LINE MODE:
-			linePos.insert(linePos.end(), centerPos, centerPos + 3);
+			linePos.insert(linePos.end(), centerPos, centerPos + numVertices);
 			if (y < imageHeight)
-				linePos.insert(linePos.end(), abovePos, abovePos + 3);
-			linePos.insert(linePos.end(), centerPos, centerPos + 3);
+				linePos.insert(linePos.end(), abovePos, abovePos + numVertices);
+			linePos.insert(linePos.end(), centerPos, centerPos + numVertices);
 			if (x < imageWidth)
-				linePos.insert(linePos.end(), rightPos, rightPos + 3);
+				linePos.insert(linePos.end(), rightPos, rightPos + numVertices);
 
-			lineCol.insert(lineCol.end(), centerCol, centerCol + 4);
+			lineCol.insert(lineCol.end(), centerCol, centerCol + numColors);
 			if (y < imageHeight)
-				lineCol.insert(lineCol.end(), aboveCol, aboveCol + 4);
-			lineCol.insert(lineCol.end(), centerCol, centerCol + 4);
+				lineCol.insert(lineCol.end(), aboveCol, aboveCol + numColors);
+			lineCol.insert(lineCol.end(), centerCol, centerCol + numColors);
 			if (x < imageWidth)
-				lineCol.insert(lineCol.end(), rightCol, rightCol + 4);
+				lineCol.insert(lineCol.end(), rightCol, rightCol + numColors);
 
 			// SOLID MODE:
+			// first triangle
+			solidPos.insert(solidPos.end(), centerPos, centerPos + numVertices);
+			solidPos.insert(solidPos.end(), abovePos, abovePos + numVertices);
+			solidPos.insert(solidPos.end(), rightPos, rightPos + numVertices);
+			// second triangle
+			solidPos.insert(solidPos.end(), aboveRightPos, aboveRightPos + numVertices);
+			solidPos.insert(solidPos.end(), abovePos, abovePos + numVertices);
+			solidPos.insert(solidPos.end(), rightPos, rightPos + numVertices);
+			// color
+			solidCol.insert(solidCol.end(), centerCol, centerCol + 4);
+			solidCol.insert(solidCol.end(), aboveCol, aboveCol + 4);
+			solidCol.insert(solidCol.end(), rightCol, rightCol + 4);
+			solidCol.insert(solidCol.end(), aboveRightCol, aboveRightCol + 4);
+			solidCol.insert(solidCol.end(), aboveCol, aboveCol + 4);
+			solidCol.insert(solidCol.end(), rightCol, rightCol + 4);
 		}
 	}
 
@@ -294,6 +319,28 @@ void initScene(int argc, char* argv[])
 	const GLuint locationOfColorLine = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
 	glEnableVertexAttribArray(locationOfColorLine); // Must always enable the vertex attribute. By default, it is disabled.
 	glVertexAttribPointer(locationOfColorLine, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositionsLine); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
+	glBindVertexArray(0); // unbind the VAO
+
+	// SOLID MODE
+	glGenBuffers(1, &solidVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, solidVBO);
+	numBytesInPositionsSolid = solidPos.size() * sizeof(float);
+	numBytesInColorsSolid = solidCol.size() * sizeof(float);
+	glBufferData(GL_ARRAY_BUFFER, numBytesInPositionsSolid + numBytesInColorsSolid, nullptr, GL_STATIC_DRAW);
+	// subdata
+	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositionsSolid, solidPos.data()); // The VBO starts with positions.
+	glBufferSubData(GL_ARRAY_BUFFER, numBytesInPositionsSolid, numBytesInColorsSolid, solidCol.data()); // The colors are written after the positions.
+	// Create the VAOs. There is a single VAO in this example.
+	glGenVertexArrays(1, &solidVAO);
+	glBindVertexArray(solidVAO);
+	// Set up the relationship between the "position" shader variable and the VAO.
+	const GLuint locationOfPositionSolid = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
+	glEnableVertexAttribArray(locationOfPositionSolid); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfPositionSolid, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
+	// Set up the relationship between the "color" shader variable and the VAO.
+	const GLuint locationOfColorSolid = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
+	glEnableVertexAttribArray(locationOfColorSolid); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfColorSolid, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositionsSolid); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
 	glBindVertexArray(0); // unbind the VAO
 
 	// Check for any OpenGL errors.
