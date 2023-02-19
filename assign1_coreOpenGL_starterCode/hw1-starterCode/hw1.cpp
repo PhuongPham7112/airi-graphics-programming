@@ -87,6 +87,9 @@ GLuint solidVBO;
 GLuint solidVAO;
 int solidNumVertices;
 
+// VBO and VAO for smoothing mode
+
+
 // CSCI 420 helper classes.
 OpenGLMatrix matrix;
 BasicPipelineProgram* pipelineProgram;
@@ -137,7 +140,79 @@ void initVertices()
 {}
 
 void initVBOs()
-{}
+{
+	// VBOs for each mode
+	const int stride = 0; // Stride is 0, i.e., data is tightly packed in the VBO.
+	const GLboolean normalized = GL_FALSE; // Normalization is off.
+	// POINT_MODE
+	// Create the VBOs. This operation must be performed BEFORE we initialize any VAOs.
+	glGenBuffers(1, &pointVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
+	// First, allocate an empty VBO of the correct size to hold positions and colors.
+	numBytesInPositions = pointPos.size() * sizeof(float);
+	numBytesInColors = pointCol.size() * sizeof(float);
+	glBufferData(GL_ARRAY_BUFFER, numBytesInPositions + numBytesInColors, nullptr, GL_STATIC_DRAW);
+	// Next, write the position and color data into the VBO.
+	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositions, pointPos.data()); // The VBO starts with positions.
+	glBufferSubData(GL_ARRAY_BUFFER, numBytesInPositions, numBytesInColors, pointCol.data()); // The colors are written after the positions.
+	// Create the VAOs. There is a single VAO in this example.
+	glGenVertexArrays(1, &pointVAO);
+	glBindVertexArray(pointVAO);
+	// Set up the relationship between the "position" shader variable and the VAO.
+	const GLuint locationOfPosition = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
+	glEnableVertexAttribArray(locationOfPosition); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfPosition, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
+	// Set up the relationship between the "color" shader variable and the VAO.
+	const GLuint locationOfColor = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
+	glEnableVertexAttribArray(locationOfColor); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfColor, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositions); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
+	glBindVertexArray(0); // unbind the VAO
+
+	// LINE MODE
+	glGenBuffers(1, &lineVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
+	// First, allocate an empty VBO of the correct size to hold positions and colors.
+	numBytesInPositionsLine = linePos.size() * sizeof(float);
+	numBytesInColorsLine = lineCol.size() * sizeof(float);
+	glBufferData(GL_ARRAY_BUFFER, numBytesInPositionsLine + numBytesInColorsLine, nullptr, GL_STATIC_DRAW);
+	// Next, write the position and color data into the VBO.
+	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositionsLine, linePos.data()); // The VBO starts with positions.
+	glBufferSubData(GL_ARRAY_BUFFER, numBytesInPositionsLine, numBytesInColorsLine, lineCol.data()); // The colors are written after the positions.
+	// Create the VAOs. There is a single VAO in this example.
+	glGenVertexArrays(1, &lineVAO);
+	glBindVertexArray(lineVAO);
+	// Set up the relationship between the "position" shader variable and the VAO.
+	const GLuint locationOfPositionLine = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
+	glEnableVertexAttribArray(locationOfPositionLine); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfPositionLine, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
+	// Set up the relationship between the "color" shader variable and the VAO.
+	const GLuint locationOfColorLine = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
+	glEnableVertexAttribArray(locationOfColorLine); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfColorLine, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositionsLine); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
+	glBindVertexArray(0); // unbind the VAO
+
+	// SOLID MODE
+	glGenBuffers(1, &solidVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, solidVBO);
+	numBytesInPositionsSolid = solidPos.size() * sizeof(float);
+	numBytesInColorsSolid = solidCol.size() * sizeof(float);
+	glBufferData(GL_ARRAY_BUFFER, numBytesInPositionsSolid + numBytesInColorsSolid, nullptr, GL_STATIC_DRAW);
+	// subdata
+	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositionsSolid, solidPos.data()); // The VBO starts with positions.
+	glBufferSubData(GL_ARRAY_BUFFER, numBytesInPositionsSolid, numBytesInColorsSolid, solidCol.data()); // The colors are written after the positions.
+	// Create the VAOs. There is a single VAO in this example.
+	glGenVertexArrays(1, &solidVAO);
+	glBindVertexArray(solidVAO);
+	// Set up the relationship between the "position" shader variable and the VAO.
+	const GLuint locationOfPositionSolid = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
+	glEnableVertexAttribArray(locationOfPositionSolid); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfPositionSolid, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
+	// Set up the relationship between the "color" shader variable and the VAO.
+	const GLuint locationOfColorSolid = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
+	glEnableVertexAttribArray(locationOfColorSolid); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfColorSolid, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositionsSolid); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
+	glBindVertexArray(0); // unbind the VAO
+}
 
 // initialize the scene
 void initScene(int argc, char* argv[])
@@ -254,7 +329,7 @@ void initScene(int argc, char* argv[])
 			}
 
 			// SOLID MODE:
-			if (y + 1 < imageHeight - 1 && x + 1 < imageWidth - 1)
+			if (y + 1 < imageHeight && x + 1 < imageWidth)
 			{
 				// first triangle
 				solidPos.insert(solidPos.end(), centerPos, centerPos + numVertices);
@@ -275,77 +350,7 @@ void initScene(int argc, char* argv[])
 		}
 	}
 
-	// VBOs for each mode
-	const int stride = 0; // Stride is 0, i.e., data is tightly packed in the VBO.
-	const GLboolean normalized = GL_FALSE; // Normalization is off.
-	// POINT_MODE
-	// Create the VBOs. This operation must be performed BEFORE we initialize any VAOs.
-	glGenBuffers(1, &pointVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
-	// First, allocate an empty VBO of the correct size to hold positions and colors.
-	numBytesInPositions = pointPos.size() * sizeof(float);
-	numBytesInColors = pointCol.size() * sizeof(float);
-	glBufferData(GL_ARRAY_BUFFER, numBytesInPositions + numBytesInColors, nullptr, GL_STATIC_DRAW);
-	// Next, write the position and color data into the VBO.
-	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositions, pointPos.data()); // The VBO starts with positions.
-	glBufferSubData(GL_ARRAY_BUFFER, numBytesInPositions, numBytesInColors, pointCol.data()); // The colors are written after the positions.
-	// Create the VAOs. There is a single VAO in this example.
-	glGenVertexArrays(1, &pointVAO);
-	glBindVertexArray(pointVAO);
-	// Set up the relationship between the "position" shader variable and the VAO.
-	const GLuint locationOfPosition = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
-	glEnableVertexAttribArray(locationOfPosition); // Must always enable the vertex attribute. By default, it is disabled.
-	glVertexAttribPointer(locationOfPosition, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
-	// Set up the relationship between the "color" shader variable and the VAO.
-	const GLuint locationOfColor = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
-	glEnableVertexAttribArray(locationOfColor); // Must always enable the vertex attribute. By default, it is disabled.
-	glVertexAttribPointer(locationOfColor, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositions); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
-	glBindVertexArray(0); // unbind the VAO
-
-	// LINE MODE
-	glGenBuffers(1, &lineVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
-	// First, allocate an empty VBO of the correct size to hold positions and colors.
-	numBytesInPositionsLine = linePos.size() * sizeof(float);
-	numBytesInColorsLine = lineCol.size() * sizeof(float);
-	glBufferData(GL_ARRAY_BUFFER, numBytesInPositionsLine + numBytesInColorsLine, nullptr, GL_STATIC_DRAW);
-	// Next, write the position and color data into the VBO.
-	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositionsLine, linePos.data()); // The VBO starts with positions.
-	glBufferSubData(GL_ARRAY_BUFFER, numBytesInPositionsLine, numBytesInColorsLine, lineCol.data()); // The colors are written after the positions.
-	// Create the VAOs. There is a single VAO in this example.
-	glGenVertexArrays(1, &lineVAO);
-	glBindVertexArray(lineVAO);
-	// Set up the relationship between the "position" shader variable and the VAO.
-	const GLuint locationOfPositionLine = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
-	glEnableVertexAttribArray(locationOfPositionLine); // Must always enable the vertex attribute. By default, it is disabled.
-	glVertexAttribPointer(locationOfPositionLine, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
-	// Set up the relationship between the "color" shader variable and the VAO.
-	const GLuint locationOfColorLine = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
-	glEnableVertexAttribArray(locationOfColorLine); // Must always enable the vertex attribute. By default, it is disabled.
-	glVertexAttribPointer(locationOfColorLine, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositionsLine); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
-	glBindVertexArray(0); // unbind the VAO
-
-	// SOLID MODE
-	glGenBuffers(1, &solidVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, solidVBO);
-	numBytesInPositionsSolid = solidPos.size() * sizeof(float);
-	numBytesInColorsSolid = solidCol.size() * sizeof(float);
-	glBufferData(GL_ARRAY_BUFFER, numBytesInPositionsSolid + numBytesInColorsSolid, nullptr, GL_STATIC_DRAW);
-	// subdata
-	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositionsSolid, solidPos.data()); // The VBO starts with positions.
-	glBufferSubData(GL_ARRAY_BUFFER, numBytesInPositionsSolid, numBytesInColorsSolid, solidCol.data()); // The colors are written after the positions.
-	// Create the VAOs. There is a single VAO in this example.
-	glGenVertexArrays(1, &solidVAO);
-	glBindVertexArray(solidVAO);
-	// Set up the relationship between the "position" shader variable and the VAO.
-	const GLuint locationOfPositionSolid = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
-	glEnableVertexAttribArray(locationOfPositionSolid); // Must always enable the vertex attribute. By default, it is disabled.
-	glVertexAttribPointer(locationOfPositionSolid, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
-	// Set up the relationship between the "color" shader variable and the VAO.
-	const GLuint locationOfColorSolid = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
-	glEnableVertexAttribArray(locationOfColorSolid); // Must always enable the vertex attribute. By default, it is disabled.
-	glVertexAttribPointer(locationOfColorSolid, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositionsSolid); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
-	glBindVertexArray(0); // unbind the VAO
+	initVBOs();
 
 	// Check for any OpenGL errors.
 	std::cout << "GL error: " << glGetError() << std::endl;
