@@ -56,8 +56,8 @@ GLint shaderMode = 0;
 int windowWidth = 1280;
 int windowHeight = 720;
 char windowTitle[512] = "CSCI 420 homework I";
-int numBytesInPositions, numBytesInPositionsLine, numBytesInPositionsSolid;
-int numBytesInColors, numBytesInColorsLine, numBytesInColorsSolid;
+//int numBytesInPositions, numBytesInPositionsLine, numBytesInPositionsSolid;
+//int numBytesInColors, numBytesInColorsLine, numBytesInColorsSolid;
 
 // Width and height of the image
 int imageWidth;
@@ -89,10 +89,13 @@ GLuint solidVAO;
 int solidNumVertices;
 
 // VBO and VAO for smoothing mode
-std::vector<float> leftSmoothPos, leftSmoothCol;
-std::vector<float> rightSmoothPos, rightSmoothCol;
-std::vector<float> aboveSmoothPos, aboveSmoothCol;
-std::vector<float> downSmoothPos, downSmoothCol;
+std::vector<float> leftSmoothPos;
+std::vector<float> rightSmoothPos;
+std::vector<float> aboveSmoothPos;
+std::vector<float> downSmoothPos;
+std::vector<float> centerSmoothPos;
+std::vector<float> smoothCol;
+std::vector<std::vector<float>> smoothPosCol;
 GLuint smoothVBO[4];
 GLuint smoothVAO;
 
@@ -155,8 +158,8 @@ void initVBOs()
 	glGenBuffers(1, &pointVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
 	// First, allocate an empty VBO of the correct size to hold positions and colors.
-	numBytesInPositions = pointPos.size() * sizeof(float);
-	numBytesInColors = pointCol.size() * sizeof(float);
+	const int numBytesInPositions = pointPos.size() * sizeof(float);
+	const int numBytesInColors = pointCol.size() * sizeof(float);
 	glBufferData(GL_ARRAY_BUFFER, numBytesInPositions + numBytesInColors, nullptr, GL_STATIC_DRAW);
 	// Next, write the position and color data into the VBO.
 	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositions, pointPos.data()); // The VBO starts with positions.
@@ -165,6 +168,7 @@ void initVBOs()
 	glGenVertexArrays(1, &pointVAO);
 	glBindVertexArray(pointVAO);
 	// Set up the relationship between the "position" shader variable and the VAO.
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
 	const GLuint locationOfPosition = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
 	glEnableVertexAttribArray(locationOfPosition); // Must always enable the vertex attribute. By default, it is disabled.
 	glVertexAttribPointer(locationOfPosition, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
@@ -178,8 +182,8 @@ void initVBOs()
 	glGenBuffers(1, &lineVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, lineVBO);
 	// First, allocate an empty VBO of the correct size to hold positions and colors.
-	numBytesInPositionsLine = linePos.size() * sizeof(float);
-	numBytesInColorsLine = lineCol.size() * sizeof(float);
+	const int numBytesInPositionsLine = linePos.size() * sizeof(float);
+	const int numBytesInColorsLine = lineCol.size() * sizeof(float);
 	glBufferData(GL_ARRAY_BUFFER, numBytesInPositionsLine + numBytesInColorsLine, nullptr, GL_STATIC_DRAW);
 	// Next, write the position and color data into the VBO.
 	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositionsLine, linePos.data()); // The VBO starts with positions.
@@ -188,6 +192,7 @@ void initVBOs()
 	glGenVertexArrays(1, &lineVAO);
 	glBindVertexArray(lineVAO);
 	// Set up the relationship between the "position" shader variable and the VAO.
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
 	const GLuint locationOfPositionLine = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
 	glEnableVertexAttribArray(locationOfPositionLine); // Must always enable the vertex attribute. By default, it is disabled.
 	glVertexAttribPointer(locationOfPositionLine, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
@@ -200,8 +205,8 @@ void initVBOs()
 	// SOLID MODE
 	glGenBuffers(1, &solidVBO);
 	glBindBuffer(GL_ARRAY_BUFFER, solidVBO);
-	numBytesInPositionsSolid = solidPos.size() * sizeof(float);
-	numBytesInColorsSolid = solidCol.size() * sizeof(float);
+	const int numBytesInPositionsSolid = solidPos.size() * sizeof(float);
+	const int numBytesInColorsSolid = solidCol.size() * sizeof(float);
 	glBufferData(GL_ARRAY_BUFFER, numBytesInPositionsSolid + numBytesInColorsSolid, nullptr, GL_STATIC_DRAW);
 	// subdata
 	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositionsSolid, solidPos.data()); // The VBO starts with positions.
@@ -222,15 +227,47 @@ void initVBOs()
 	glBindVertexArray(0); // unbind the VAO
 
 	// SMOOTH MODE
+	// Neighbour nodes
 	for (int i = 0; i < 4; i++)
 	{
+		// Creating the VBO
 		glGenBuffers(1, &smoothVBO[i]);
 		glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[i]);
-		for (int j = 0; j < 2; j++)
-		{
-
-		}
+		const int numBytesPosSmooth = smoothPosCol[i].size() * sizeof(float);
+		glBufferData(GL_ARRAY_BUFFER, numBytesPosSmooth, nullptr, GL_STATIC_DRAW);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesPosSmooth, smoothPosCol[i].data()); // pos data
 	}
+	// Bind the VAO
+	glGenVertexArrays(1, &smoothVAO);
+	glBindVertexArray(smoothVAO);
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
+
+	// Neighbours
+	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[0]);
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
+	const GLuint locationOfPosSmooth1 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position1");
+	glEnableVertexAttribArray(locationOfPosSmooth1);
+	glVertexAttribPointer(locationOfPosSmooth1, 3, GL_FLOAT, normalized, stride, (const void*)0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[1]);
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
+	const GLuint locationOfPosSmooth2 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position2");
+	glEnableVertexAttribArray(locationOfPosSmooth2);
+	glVertexAttribPointer(locationOfPosSmooth2, 3, GL_FLOAT, normalized, stride, (const void*)0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[2]);
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
+	const GLuint locationOfPosSmooth3 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position3");
+	glEnableVertexAttribArray(locationOfPosSmooth3);
+	glVertexAttribPointer(locationOfPosSmooth3, 3, GL_FLOAT, normalized, stride, (const void*)0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[3]);
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
+	const GLuint locationOfPosSmooth4 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position4");
+	glEnableVertexAttribArray(locationOfPosSmooth4);
+	glVertexAttribPointer(locationOfPosSmooth4, 3, GL_FLOAT, normalized, stride, (const void*)0);
+
+	glBindVertexArray(0); // unbind the VAO
 }
 
 // initialize the scene
@@ -283,9 +320,9 @@ void initScene(int argc, char* argv[])
 			centerPos[1] = scale * heightmapImage->getPixel(x, y, 0);
 			centerPos[2] = static_cast<float>(x) / imageWidth;
 
-			centerCol[0] = static_cast<float>(y) / imageHeight - 0.5f;
+			centerCol[0] = scale * heightmapImage->getPixel(x, y, 0);
 			centerCol[1] = scale * heightmapImage->getPixel(x, y, 0);
-			centerCol[2] = static_cast<float>(x) / imageWidth - 0.5f;
+			centerCol[2] = scale * heightmapImage->getPixel(x, y, 0);
 			centerCol[3] = 1.0f;
 
 			// above point: (i, j + 1)
@@ -296,9 +333,9 @@ void initScene(int argc, char* argv[])
 			abovePos[1] = scale * heightmapImage->getPixel(x, y + 1, 0);
 			abovePos[2] = centerPos[2];
 
-			aboveCol[0] = static_cast<float>(y + 1) / imageHeight - 0.5f;
+			aboveCol[0] = scale * heightmapImage->getPixel(x, y + 1, 0);
 			aboveCol[1] = scale * heightmapImage->getPixel(x, y + 1, 0);
-			aboveCol[2] = static_cast<float>(x) / imageWidth - 0.5f;
+			aboveCol[2] = scale * heightmapImage->getPixel(x, y + 1, 0);
 			aboveCol[3] = 1.0f;
 
 			// right: (i + 1, j)
@@ -309,9 +346,9 @@ void initScene(int argc, char* argv[])
 			rightPos[1] = scale * heightmapImage->getPixel(x + 1, y, 0);
 			rightPos[2] = static_cast<float>(x + 1) / imageWidth;
 
-			rightCol[0] = static_cast<float>(y) / imageHeight - 0.5f;
+			rightCol[0] = scale * heightmapImage->getPixel(x + 1, y, 0);
 			rightCol[1] = scale * heightmapImage->getPixel(x + 1, y, 0);
-			rightCol[2] = static_cast<float>(x + 1) / imageWidth - 0.5f;
+			rightCol[2] = scale * heightmapImage->getPixel(x + 1, y, 0);
 			rightCol[3] = 1.0f;
 
 			// right and above: (i + 1, j + 1)
@@ -322,9 +359,9 @@ void initScene(int argc, char* argv[])
 			aboveRightPos[1] = scale * heightmapImage->getPixel(x + 1, y + 1, 0);
 			aboveRightPos[2] = rightPos[2];
 
-			aboveRightCol[0] = static_cast<float>(y + 1) / imageHeight - 0.5f;
+			aboveRightCol[0] = scale * heightmapImage->getPixel(x + 1, y + 1, 0);
 			aboveRightCol[1] = scale * heightmapImage->getPixel(x + 1, y + 1, 0);
-			aboveRightCol[2] = static_cast<float>(x + 1) / imageWidth - 0.5f;
+			aboveRightCol[2] = scale * heightmapImage->getPixel(x + 1, y + 1, 0);
 			aboveRightCol[3] = 1.0f;
 
 			// left: (i - 1, j)
@@ -335,9 +372,9 @@ void initScene(int argc, char* argv[])
 			leftPos[1] = scale * heightmapImage->getPixel(x - 1, y, 0);
 			leftPos[2] = static_cast<float>(x - 1) / imageWidth;
 
-			leftCol[0] = static_cast<float>(y) / imageHeight - 0.5f;
+			leftCol[0] = scale * heightmapImage->getPixel(x - 1, y, 0);
 			leftCol[1] = scale * heightmapImage->getPixel(x - 1, y, 0);
-			leftCol[2] = static_cast<float>(x - 1) / imageWidth - 0.5f;
+			leftCol[2] = scale * heightmapImage->getPixel(x - 1, y, 0);
 			leftCol[3] = 1.0f;
 
 			// down: (i, j - 1)
@@ -348,9 +385,9 @@ void initScene(int argc, char* argv[])
 			downPos[1] = scale * heightmapImage->getPixel(x, y - 1, 0);
 			downPos[2] = static_cast<float>(x) / imageWidth;
 
-			downCol[0] = static_cast<float>(y - 1) / imageHeight - 0.5f;
 			downCol[0] = scale * heightmapImage->getPixel(x, y - 1, 0);
-			downCol[0] = static_cast<float>(x) / imageWidth - 0.5f;
+			downCol[0] = scale * heightmapImage->getPixel(x, y - 1, 0);
+			downCol[0] = scale * heightmapImage->getPixel(x, y - 1, 0);
 			downCol[0] = 1.0f;
 
 			// POINT MODE:
@@ -397,46 +434,41 @@ void initScene(int argc, char* argv[])
 			if (x - 1 < 0)
 			{
 				leftSmoothPos.insert(leftSmoothPos.end(), rightPos, rightPos + numVertices);
-				leftSmoothCol.insert(leftSmoothCol.end(), rightCol, rightCol + numColors);
 			}
 			else
 			{
 				leftSmoothPos.insert(leftSmoothPos.end(), leftPos, leftPos + numVertices);
-				leftSmoothCol.insert(leftSmoothCol.end(), leftCol, leftCol + numColors);
 			}
 			if (x + 1 > imageWidth - 1)
 			{
 				rightSmoothPos.insert(rightSmoothPos.end(), leftPos, leftPos + numVertices);
-				rightSmoothCol.insert(rightSmoothCol.end(), leftCol, leftCol + numColors);
 			}
 			else
 			{
 				rightSmoothPos.insert(rightSmoothPos.end(), rightPos, rightPos + numVertices);
-				rightSmoothCol.insert(rightSmoothCol.end(), rightCol, rightCol + numColors);
 			}
 			if (y - 1 < 0)
 			{
 				downSmoothPos.insert(downSmoothPos.end(), abovePos, abovePos + numVertices);
-				downSmoothCol.insert(downSmoothCol.end(), aboveCol, aboveCol + numColors);
 			}
 			else
 			{
 				downSmoothPos.insert(downSmoothPos.end(), downPos, downPos + numVertices);
-				downSmoothCol.insert(downSmoothCol.end(), downCol, downCol + numColors);
 			}
 			if (y + 1 > imageHeight - 1)
 			{
 				aboveSmoothPos.insert(aboveSmoothPos.end(), downPos, downPos + numVertices);
-				aboveSmoothCol.insert(aboveSmoothCol.end(), downCol, downCol + numColors);
 			}
 			else
 			{
 				aboveSmoothPos.insert(aboveSmoothPos.end(), abovePos, abovePos + numVertices);
-				aboveSmoothCol.insert(aboveSmoothCol.end(), aboveCol, aboveCol + numColors);
 			}
 		}
 	}
-
+	smoothPosCol.push_back(leftSmoothPos);
+	smoothPosCol.push_back(rightSmoothPos);
+	smoothPosCol.push_back(aboveSmoothPos);
+	smoothPosCol.push_back(downSmoothPos);
 	initVBOs();
 
 	// Check for any OpenGL errors.
@@ -723,7 +755,7 @@ int main(int argc, char* argv[])
 	{
 		cout << "error: " << glewGetErrorString(result) << endl;
 		exit(EXIT_FAILURE);
-	}
+}
 #endif
 
 	// Perform the initialization.
