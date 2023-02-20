@@ -89,11 +89,11 @@ GLuint solidVAO;
 int solidNumVertices;
 
 // VBO and VAO for smoothing mode
-std::vector<float> leftPos, leftCol;
-std::vector<float> rightPos, rightCol;
-std::vector<float> abovePos, aboveCol;
-std::vector<float> belowPos, belowCol;
-GLuint leftVBO, rightVBO aboveVBO, belowVBO;
+std::vector<float> leftSmoothPos, leftSmoothCol;
+std::vector<float> rightSmoothPos, rightSmoothCol;
+std::vector<float> aboveSmoothPos, aboveSmoothCol;
+std::vector<float> downSmoothPos, downSmoothCol;
+GLuint smoothVBO[4];
 GLuint smoothVAO;
 
 // CSCI 420 helper classes.
@@ -220,6 +220,17 @@ void initVBOs()
 	glEnableVertexAttribArray(locationOfColorSolid); // Must always enable the vertex attribute. By default, it is disabled.
 	glVertexAttribPointer(locationOfColorSolid, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositionsSolid); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
 	glBindVertexArray(0); // unbind the VAO
+
+	// SMOOTH MODE
+	for (int i = 0; i < 4; i++)
+	{
+		glGenBuffers(1, &smoothVBO[i]);
+		glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[i]);
+		for (int j = 0; j < 2; j++)
+		{
+
+		}
+	}
 }
 
 // initialize the scene
@@ -316,6 +327,32 @@ void initScene(int argc, char* argv[])
 			aboveRightCol[2] = static_cast<float>(x + 1) / imageWidth - 0.5f;
 			aboveRightCol[3] = 1.0f;
 
+			// left: (i - 1, j)
+			float leftPos[3];
+			float leftCol[4];
+
+			leftPos[0] = static_cast<float>(y) / imageHeight;
+			leftPos[1] = scale * heightmapImage->getPixel(x - 1, y, 0);
+			leftPos[2] = static_cast<float>(x - 1) / imageWidth;
+
+			leftCol[0] = static_cast<float>(y) / imageHeight - 0.5f;
+			leftCol[1] = scale * heightmapImage->getPixel(x - 1, y, 0);
+			leftCol[2] = static_cast<float>(x - 1) / imageWidth - 0.5f;
+			leftCol[3] = 1.0f;
+
+			// down: (i, j - 1)
+			float downPos[3];
+			float downCol[4];
+
+			downPos[0] = static_cast<float>(y - 1) / imageHeight;
+			downPos[1] = scale * heightmapImage->getPixel(x, y - 1, 0);
+			downPos[2] = static_cast<float>(x) / imageWidth;
+
+			downCol[0] = static_cast<float>(y - 1) / imageHeight - 0.5f;
+			downCol[0] = scale * heightmapImage->getPixel(x, y - 1, 0);
+			downCol[0] = static_cast<float>(x) / imageWidth - 0.5f;
+			downCol[0] = 1.0f;
+
 			// POINT MODE:
 			pointPos.insert(pointPos.end(), centerPos, centerPos + numVertices);
 			pointCol.insert(pointCol.end(), centerCol, centerCol + numColors);
@@ -348,12 +385,54 @@ void initScene(int argc, char* argv[])
 				solidPos.insert(solidPos.end(), abovePos, abovePos + numVertices);
 				solidPos.insert(solidPos.end(), rightPos, rightPos + numVertices);
 				// color
-				solidCol.insert(solidCol.end(), centerCol, centerCol + 4);
-				solidCol.insert(solidCol.end(), aboveCol, aboveCol + 4);
-				solidCol.insert(solidCol.end(), rightCol, rightCol + 4);
-				solidCol.insert(solidCol.end(), aboveRightCol, aboveRightCol + 4);
-				solidCol.insert(solidCol.end(), aboveCol, aboveCol + 4);
-				solidCol.insert(solidCol.end(), rightCol, rightCol + 4);
+				solidCol.insert(solidCol.end(), centerCol, centerCol + numColors);
+				solidCol.insert(solidCol.end(), aboveCol, aboveCol + numColors);
+				solidCol.insert(solidCol.end(), rightCol, rightCol + numColors);
+				solidCol.insert(solidCol.end(), aboveRightCol, aboveRightCol + numColors);
+				solidCol.insert(solidCol.end(), aboveCol, aboveCol + numColors);
+				solidCol.insert(solidCol.end(), rightCol, rightCol + numColors);
+			}
+
+			// SMOOTH MODE:
+			if (x - 1 < 0)
+			{
+				leftSmoothPos.insert(leftSmoothPos.end(), rightPos, rightPos + numVertices);
+				leftSmoothCol.insert(leftSmoothCol.end(), rightCol, rightCol + numColors);
+			}
+			else
+			{
+				leftSmoothPos.insert(leftSmoothPos.end(), leftPos, leftPos + numVertices);
+				leftSmoothCol.insert(leftSmoothCol.end(), leftCol, leftCol + numColors);
+			}
+			if (x + 1 > imageWidth - 1)
+			{
+				rightSmoothPos.insert(rightSmoothPos.end(), leftPos, leftPos + numVertices);
+				rightSmoothCol.insert(rightSmoothCol.end(), leftCol, leftCol + numColors);
+			}
+			else
+			{
+				rightSmoothPos.insert(rightSmoothPos.end(), rightPos, rightPos + numVertices);
+				rightSmoothCol.insert(rightSmoothCol.end(), rightCol, rightCol + numColors);
+			}
+			if (y - 1 < 0)
+			{
+				downSmoothPos.insert(downSmoothPos.end(), abovePos, abovePos + numVertices);
+				downSmoothCol.insert(downSmoothCol.end(), aboveCol, aboveCol + numColors);
+			}
+			else
+			{
+				downSmoothPos.insert(downSmoothPos.end(), downPos, downPos + numVertices);
+				downSmoothCol.insert(downSmoothCol.end(), downCol, downCol + numColors);
+			}
+			if (y + 1 > imageHeight - 1)
+			{
+				aboveSmoothPos.insert(aboveSmoothPos.end(), downPos, downPos + numVertices);
+				aboveSmoothCol.insert(aboveSmoothCol.end(), downCol, downCol + numColors);
+			}
+			else
+			{
+				aboveSmoothPos.insert(aboveSmoothPos.end(), abovePos, abovePos + numVertices);
+				aboveSmoothCol.insert(aboveSmoothCol.end(), aboveCol, aboveCol + numColors);
 			}
 		}
 	}
