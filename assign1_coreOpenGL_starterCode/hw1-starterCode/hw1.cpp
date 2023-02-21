@@ -55,6 +55,7 @@ float terrainScale[3] = { 1.0f, 1.0f, 1.0f };
 
 // Width and height of the OpenGL window, in pixels.
 GLint shaderMode = 0;
+GLint maxHeightShader = 0;
 int windowWidth = 1280;
 int windowHeight = 720;
 char windowTitle[512] = "CSCI 420 homework I";
@@ -65,7 +66,7 @@ char windowTitle[512] = "CSCI 420 homework I";
 int imageWidth;
 int imageHeight;
 float scale = 0.002f;
-
+float maxHeight = 0.0f;
 // Stores the image loaded from disk.
 ImageIO* heightmapImage;
 
@@ -265,6 +266,7 @@ void initVBOs()
 	glBindVertexArray(smoothVAO);
 
 	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "shaderMode");
+	maxHeightShader = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "maxHeight");
 
 	// Neighbours
 	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[0]);
@@ -336,6 +338,12 @@ void AddSmoothNeighbours(int x, int y)
 	downPos[1] = scale * heightmapImage->getPixel(x, y - 1, 0);
 	downPos[2] = static_cast<float>(x) / imageWidth;
 
+	// find max height
+	if (scale * heightmapImage->getPixel(x, y, 0) > maxHeight)
+	{
+		maxHeight = scale * heightmapImage->getPixel(x, y, 0);
+	}
+	// insert
 	if (x - 1 < 0) // no valid left
 	{
 		leftSmoothPos.insert(leftSmoothPos.end(), centerPos, centerPos + numVertices);
@@ -780,6 +788,7 @@ void keyboardFunc(unsigned char key, int x, int y)
 		break;
 	case '4':
 		glUniform1i(shaderMode, (GLint)1);
+		glUniform1f(maxHeightShader, (GLfloat)maxHeight);
 		renderState = SMOOTH_MODE;
 		break;
 	}
