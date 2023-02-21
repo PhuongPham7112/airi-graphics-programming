@@ -40,7 +40,9 @@ int rightMouseButton = 0; // 1 if pressed, 0 if not
 typedef enum { ROTATE, TRANSLATE, SCALE } CONTROL_STATE;
 CONTROL_STATE controlState = ROTATE;
 
-typedef enum { POINT_MODE, LINE_MODE, SOLID_MODE } RENDER_STATE;
+typedef enum {
+	POINT_MODE, LINE_MODE, SOLID_MODE, SMOOTH_MODE
+} RENDER_STATE;
 RENDER_STATE renderState = POINT_MODE;
 
 // Transformations of the terrain.
@@ -94,9 +96,10 @@ std::vector<float> rightSmoothPos;
 std::vector<float> aboveSmoothPos;
 std::vector<float> downSmoothPos;
 std::vector<float> centerSmoothPos;
+// color
 std::vector<float> smoothCol;
 std::vector<std::vector<float>> smoothPosCol;
-GLuint smoothVBO[4];
+GLuint smoothVBO[5]; // last vbio is for center pos and color
 GLuint smoothVAO;
 
 // CSCI 420 helper classes.
@@ -145,6 +148,14 @@ void renderSolidMode()
 	glBindVertexArray(0); // unbind the VAO
 }
 
+void renderSmoothMode()
+{
+	int numVertex = smoothPosCol[0].size() / 3;
+	glBindVertexArray(smoothVAO);
+	glDrawArrays(GL_TRIANGLES, 0, numVertex);
+	glBindVertexArray(0); // unbind the VAO
+}
+
 void initVertices()
 {}
 
@@ -153,6 +164,7 @@ void initVBOs()
 	// VBOs for each mode
 	const int stride = 0; // Stride is 0, i.e., data is tightly packed in the VBO.
 	const GLboolean normalized = GL_FALSE; // Normalization is off.
+
 	// POINT_MODE
 	// Create the VBOs. This operation must be performed BEFORE we initialize any VAOs.
 	glGenBuffers(1, &pointVBO);
@@ -168,7 +180,7 @@ void initVBOs()
 	glGenVertexArrays(1, &pointVAO);
 	glBindVertexArray(pointVAO);
 	// Set up the relationship between the "position" shader variable and the VAO.
-	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "shaderMode");
 	const GLuint locationOfPosition = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
 	glEnableVertexAttribArray(locationOfPosition); // Must always enable the vertex attribute. By default, it is disabled.
 	glVertexAttribPointer(locationOfPosition, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
@@ -192,7 +204,7 @@ void initVBOs()
 	glGenVertexArrays(1, &lineVAO);
 	glBindVertexArray(lineVAO);
 	// Set up the relationship between the "position" shader variable and the VAO.
-	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "shaderMode");
 	const GLuint locationOfPositionLine = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
 	glEnableVertexAttribArray(locationOfPositionLine); // Must always enable the vertex attribute. By default, it is disabled.
 	glVertexAttribPointer(locationOfPositionLine, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
@@ -215,7 +227,7 @@ void initVBOs()
 	glGenVertexArrays(1, &solidVAO);
 	glBindVertexArray(solidVAO);
 	// Set up the relationship mode
-	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "shaderMode");
 	// Set up the relationship between the "position" shader variable and the VAO.
 	const GLuint locationOfPositionSolid = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
 	glEnableVertexAttribArray(locationOfPositionSolid); // Must always enable the vertex attribute. By default, it is disabled.
@@ -228,46 +240,140 @@ void initVBOs()
 
 	// SMOOTH MODE
 	// Neighbour nodes
-	for (int i = 0; i < 4; i++)
+	for (int i = 0; i < 5; i++)
 	{
-		// Creating the VBO
+		// Creating the VBO for each vertex
 		glGenBuffers(1, &smoothVBO[i]);
 		glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[i]);
-		const int numBytesPosSmooth = smoothPosCol[i].size() * sizeof(float);
-		glBufferData(GL_ARRAY_BUFFER, numBytesPosSmooth, nullptr, GL_STATIC_DRAW);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesPosSmooth, smoothPosCol[i].data()); // pos data
+		if (i == 4) // color and pos data for center 
+		{
+			const int numBytesPos = centerSmoothPos.size() * sizeof(float);
+			const int numBytesCol = smoothCol.size() * sizeof(float);
+			glBufferData(GL_ARRAY_BUFFER, numBytesPos + numBytesCol, nullptr, GL_STATIC_DRAW);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesPos, centerSmoothPos.data()); // pos data
+			glBufferSubData(GL_ARRAY_BUFFER, numBytesPos, numBytesCol, smoothCol.data()); // pos data
+		}
+		else
+		{
+			const int numBytesPosSmooth = smoothPosCol[i].size() * sizeof(float);
+			glBufferData(GL_ARRAY_BUFFER, numBytesPosSmooth, nullptr, GL_STATIC_DRAW);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesPosSmooth, smoothPosCol[i].data()); // pos data
+		}
 	}
 	// Bind the VAO
 	glGenVertexArrays(1, &smoothVAO);
 	glBindVertexArray(smoothVAO);
-	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
+
+	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "shaderMode");
 
 	// Neighbours
 	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[0]);
-	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
 	const GLuint locationOfPosSmooth1 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position1");
 	glEnableVertexAttribArray(locationOfPosSmooth1);
 	glVertexAttribPointer(locationOfPosSmooth1, 3, GL_FLOAT, normalized, stride, (const void*)0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[1]);
-	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
 	const GLuint locationOfPosSmooth2 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position2");
 	glEnableVertexAttribArray(locationOfPosSmooth2);
 	glVertexAttribPointer(locationOfPosSmooth2, 3, GL_FLOAT, normalized, stride, (const void*)0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[2]);
-	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
 	const GLuint locationOfPosSmooth3 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position3");
 	glEnableVertexAttribArray(locationOfPosSmooth3);
 	glVertexAttribPointer(locationOfPosSmooth3, 3, GL_FLOAT, normalized, stride, (const void*)0);
 
 	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[3]);
-	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "mode");
 	const GLuint locationOfPosSmooth4 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position4");
 	glEnableVertexAttribArray(locationOfPosSmooth4);
 	glVertexAttribPointer(locationOfPosSmooth4, 3, GL_FLOAT, normalized, stride, (const void*)0);
 
+	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[4]); // center color and pos
+	const GLuint locationOfPosSmooth = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position");
+	glEnableVertexAttribArray(locationOfPosSmooth);
+	glVertexAttribPointer(locationOfPosSmooth, 3, GL_FLOAT, normalized, stride, (const void*)0);
+	const GLuint locationOfColSmooth = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color");
+	glEnableVertexAttribArray(locationOfColSmooth);
+	glVertexAttribPointer(locationOfColSmooth, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)(centerSmoothPos.size() * sizeof(float)));
+
 	glBindVertexArray(0); // unbind the VAO
+}
+
+void AddSmoothNeighbours(int x, int y)
+{
+	int numVertices = 3;
+	// center point:
+	float centerPos[3];
+
+	centerPos[0] = static_cast<float>(y) / imageHeight;
+	centerPos[1] = scale * heightmapImage->getPixel(x, y, 0);
+	centerPos[2] = static_cast<float>(x) / imageWidth;
+
+	// above point: (i, j + 1)
+	float abovePos[3];
+
+	abovePos[0] = static_cast<float>(y + 1) / imageHeight;
+	abovePos[1] = scale * heightmapImage->getPixel(x, y + 1, 0);
+	abovePos[2] = static_cast<float>(x) / imageWidth;
+
+	// right: (i + 1, j)
+	float rightPos[3];
+
+	rightPos[0] = static_cast<float>(y) / imageHeight;
+	rightPos[1] = scale * heightmapImage->getPixel(x + 1, y, 0);
+	rightPos[2] = static_cast<float>(x + 1) / imageWidth;
+
+	// left: (i - 1, j)
+	float leftPos[3];
+
+	leftPos[0] = static_cast<float>(y) / imageHeight;
+	leftPos[1] = scale * heightmapImage->getPixel(x - 1, y, 0);
+	leftPos[2] = static_cast<float>(x - 1) / imageWidth;
+
+	// down: (i, j - 1)
+	float downPos[3];
+
+	downPos[0] = static_cast<float>(y - 1) / imageHeight;
+	downPos[1] = scale * heightmapImage->getPixel(x, y - 1, 0);
+	downPos[2] = static_cast<float>(x) / imageWidth;
+
+	if (x - 1 < 0) // no valid left
+	{
+		leftSmoothPos.insert(leftSmoothPos.end(), centerPos, centerPos + numVertices);
+	}
+	else
+	{
+		leftSmoothPos.insert(leftSmoothPos.end(), leftPos, leftPos + numVertices);
+	}
+	if (x + 1 > imageWidth - 1) // no valid right
+	{
+		rightSmoothPos.insert(rightSmoothPos.end(), centerPos, centerPos + numVertices);
+	}
+	else
+	{
+		rightSmoothPos.insert(rightSmoothPos.end(), rightPos, rightPos + numVertices);
+	}
+	if (y - 1 < 0) // no valid down
+	{
+		downSmoothPos.insert(downSmoothPos.end(), centerPos, centerPos + numVertices);
+	}
+	else
+	{
+		downSmoothPos.insert(downSmoothPos.end(), downPos, downPos + numVertices);
+	}
+	if (y + 1 > imageHeight - 1) // no valid up
+	{
+		aboveSmoothPos.insert(aboveSmoothPos.end(), centerPos, centerPos + numVertices);
+	}
+	else
+	{
+		aboveSmoothPos.insert(aboveSmoothPos.end(), abovePos, abovePos + numVertices);
+	}
+	//center
+	centerSmoothPos.insert(centerSmoothPos.end(), centerPos, centerPos + 3);
+	smoothCol.push_back(scale * heightmapImage->getPixel(x, y, 0));
+	smoothCol.push_back(scale * heightmapImage->getPixel(x, y, 0));
+	smoothCol.push_back(scale * heightmapImage->getPixel(x, y, 0));
+	smoothCol.push_back(1.0f);
 }
 
 // initialize the scene
@@ -282,7 +388,7 @@ void initScene(int argc, char* argv[])
 	}
 
 	// Set the background color.
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f); // Black color.
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Black color.
 
 	// Enable z-buffering (i.e., hidden surface removal using the z-buffer algorithm).
 	glEnable(GL_DEPTH_TEST);
@@ -431,44 +537,23 @@ void initScene(int argc, char* argv[])
 			}
 
 			// SMOOTH MODE:
-			if (x - 1 < 0)
+			if (y + 1 < imageHeight && x + 1 < imageWidth)
 			{
-				leftSmoothPos.insert(leftSmoothPos.end(), rightPos, rightPos + numVertices);
-			}
-			else
-			{
-				leftSmoothPos.insert(leftSmoothPos.end(), leftPos, leftPos + numVertices);
-			}
-			if (x + 1 > imageWidth - 1)
-			{
-				rightSmoothPos.insert(rightSmoothPos.end(), leftPos, leftPos + numVertices);
-			}
-			else
-			{
-				rightSmoothPos.insert(rightSmoothPos.end(), rightPos, rightPos + numVertices);
-			}
-			if (y - 1 < 0)
-			{
-				downSmoothPos.insert(downSmoothPos.end(), abovePos, abovePos + numVertices);
-			}
-			else
-			{
-				downSmoothPos.insert(downSmoothPos.end(), downPos, downPos + numVertices);
-			}
-			if (y + 1 > imageHeight - 1)
-			{
-				aboveSmoothPos.insert(aboveSmoothPos.end(), downPos, downPos + numVertices);
-			}
-			else
-			{
-				aboveSmoothPos.insert(aboveSmoothPos.end(), abovePos, abovePos + numVertices);
+				AddSmoothNeighbours(x, y);
+				AddSmoothNeighbours(x, y + 1);
+				AddSmoothNeighbours(x + 1, y);
+				AddSmoothNeighbours(x + 1, y + 1);
+				AddSmoothNeighbours(x, y + 1);
+				AddSmoothNeighbours(x + 1, y);
 			}
 		}
 	}
+
 	smoothPosCol.push_back(leftSmoothPos);
 	smoothPosCol.push_back(rightSmoothPos);
 	smoothPosCol.push_back(aboveSmoothPos);
 	smoothPosCol.push_back(downSmoothPos);
+	smoothPosCol.push_back(centerSmoothPos);
 	initVBOs();
 
 	// Check for any OpenGL errors.
@@ -521,6 +606,9 @@ void displayFunc()
 		break;
 	case SOLID_MODE:
 		renderSolidMode();
+		break;
+	case SMOOTH_MODE:
+		renderSmoothMode();
 		break;
 	}
 	// Swap the double-buffers.
@@ -692,6 +780,7 @@ void keyboardFunc(unsigned char key, int x, int y)
 		break;
 	case '4':
 		glUniform1i(shaderMode, (GLint)1);
+		renderState = SMOOTH_MODE;
 		break;
 	}
 }
@@ -755,7 +844,7 @@ int main(int argc, char* argv[])
 	{
 		cout << "error: " << glewGetErrorString(result) << endl;
 		exit(EXIT_FAILURE);
-}
+	}
 #endif
 
 	// Perform the initialization.

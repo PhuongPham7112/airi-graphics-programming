@@ -20,7 +20,7 @@ void main()
   {
 	vec3 smoothPos = (position1 + position2 + position3 + position4) / 4;
 	gl_Position = projectionMatrix * modelViewMatrix * vec4(smoothPos, 1.0f);
-	col = color - 0.95f;
+	col = (smoothPos[1] * color) / position[1];
   }
   else 
   {
