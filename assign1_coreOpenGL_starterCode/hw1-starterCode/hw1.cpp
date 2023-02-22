@@ -40,10 +40,8 @@ int rightMouseButton = 0; // 1 if pressed, 0 if not
 typedef enum { ROTATE, TRANSLATE, SCALE } CONTROL_STATE;
 CONTROL_STATE controlState = ROTATE;
 
-typedef enum {
-	POINT_MODE, LINE_MODE, SOLID_MODE, SMOOTH_MODE
-} RENDER_STATE;
-RENDER_STATE renderState = POINT_MODE;
+typedef enum { POINT_MODE, LINE_MODE, SOLID_MODE, SMOOTH_MODE } RENDER_STATE;
+RENDER_STATE renderState;
 
 // Transformations of the terrain.
 float terrainRotate[3] = { 0.0f, 0.0f, 0.0f };
@@ -104,6 +102,7 @@ GLuint smoothVBO[5]; // last vbio is for center pos and color
 GLuint smoothVAO;
 
 // CSCI 420 helper classes.
+int frameNum = 0;
 OpenGLMatrix matrix;
 BasicPipelineProgram* pipelineProgram;
 
@@ -157,9 +156,6 @@ void renderSmoothMode()
 	glBindVertexArray(0); // unbind the VAO
 }
 
-void initVertices()
-{}
-
 void initVBOs()
 {
 	// VBOs for each mode
@@ -182,6 +178,7 @@ void initVBOs()
 	glBindVertexArray(pointVAO);
 	// Set up the relationship between the "position" shader variable and the VAO.
 	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "shaderMode");
+	maxHeightShader = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "maxHeight");
 	const GLuint locationOfPosition = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
 	glEnableVertexAttribArray(locationOfPosition); // Must always enable the vertex attribute. By default, it is disabled.
 	glVertexAttribPointer(locationOfPosition, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
@@ -206,6 +203,7 @@ void initVBOs()
 	glBindVertexArray(lineVAO);
 	// Set up the relationship between the "position" shader variable and the VAO.
 	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "shaderMode");
+	maxHeightShader = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "maxHeight");
 	const GLuint locationOfPositionLine = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
 	glEnableVertexAttribArray(locationOfPositionLine); // Must always enable the vertex attribute. By default, it is disabled.
 	glVertexAttribPointer(locationOfPositionLine, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
@@ -229,6 +227,7 @@ void initVBOs()
 	glBindVertexArray(solidVAO);
 	// Set up the relationship mode
 	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "shaderMode");
+	maxHeightShader = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "maxHeight");
 	// Set up the relationship between the "position" shader variable and the VAO.
 	const GLuint locationOfPositionSolid = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
 	glEnableVertexAttribArray(locationOfPositionSolid); // Must always enable the vertex attribute. By default, it is disabled.
@@ -338,11 +337,6 @@ void AddSmoothNeighbours(int x, int y)
 	downPos[1] = scale * heightmapImage->getPixel(x, y - 1, 0);
 	downPos[2] = static_cast<float>(x) / imageWidth;
 
-	// find max height
-	if (scale * heightmapImage->getPixel(x, y, 0) > maxHeight)
-	{
-		maxHeight = scale * heightmapImage->getPixel(x, y, 0);
-	}
 	// insert
 	if (x - 1 < 0) // no valid left
 	{
@@ -388,6 +382,7 @@ void AddSmoothNeighbours(int x, int y)
 void initScene(int argc, char* argv[])
 {
 	// Load the image from a jpeg disk file into main memory.
+	renderState = POINT_MODE;
 	heightmapImage = new ImageIO();
 	if (heightmapImage->loadJPEG(argv[1]) != ImageIO::OK)
 	{
@@ -503,6 +498,12 @@ void initScene(int argc, char* argv[])
 			downCol[0] = scale * heightmapImage->getPixel(x, y - 1, 0);
 			downCol[0] = scale * heightmapImage->getPixel(x, y - 1, 0);
 			downCol[0] = 1.0f;
+
+			// find max height
+			if (scale * heightmapImage->getPixel(x, y, 0) > maxHeight)
+			{
+				maxHeight = scale * heightmapImage->getPixel(x, y, 0);
+			}
 
 			// POINT MODE:
 			pointPos.insert(pointPos.end(), centerPos, centerPos + numVertices);
@@ -628,7 +629,13 @@ void idleFunc()
 	// Do some stuff... 
 
 	// For example, here, you can save the screenshots to disk (to make the animation).
-
+	if (frameNum < 5)
+	{
+		renderState = POINT_MODE;
+		std::string folder = "../screenshots/";
+		saveScreenshot((folder + "frame_" + std::to_string(frameNum) + ".jpeg").c_str());
+		frameNum++;
+	}
 	// Send the signal that we should call displayFunc.
 	glutPostRedisplay();
 }
@@ -776,14 +783,17 @@ void keyboardFunc(unsigned char key, int x, int y)
 		break;
 	case '1':
 		glUniform1i(shaderMode, (GLint)0);
+		glUniform1f(maxHeightShader, (GLfloat)maxHeight);
 		renderState = POINT_MODE;
 		break;
 	case '2':
 		glUniform1i(shaderMode, (GLint)0);
+		glUniform1f(maxHeightShader, (GLfloat)maxHeight);
 		renderState = LINE_MODE;
 		break;
 	case '3':
 		glUniform1i(shaderMode, (GLint)0);
+		glUniform1f(maxHeightShader, (GLfloat)maxHeight);
 		renderState = SOLID_MODE;
 		break;
 	case '4':
@@ -861,4 +871,4 @@ int main(int argc, char* argv[])
 
 	// Sink forever into the GLUT loop.
 	glutMainLoop();
-}
+	}
