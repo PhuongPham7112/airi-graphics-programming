@@ -5,7 +5,6 @@
 
   Student username: phuongp
 */
-
 #include "basicPipelineProgram.h"
 #include "openGLMatrix.h"
 #include "imageIO.h"
@@ -41,7 +40,7 @@ typedef enum { ROTATE, TRANSLATE, SCALE } CONTROL_STATE;
 CONTROL_STATE controlState = ROTATE;
 
 typedef enum { POINT_MODE, LINE_MODE, SOLID_MODE, SMOOTH_MODE } RENDER_STATE;
-RENDER_STATE renderState;
+RENDER_STATE renderState = POINT_MODE;
 
 // Transformations of the terrain.
 float terrainRotate[3] = { 0.0f, 0.0f, 0.0f };
@@ -297,6 +296,8 @@ void initVBOs()
 	glVertexAttribPointer(locationOfColSmooth, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)(centerSmoothPos.size() * sizeof(float)));
 
 	glBindVertexArray(0); // unbind the VAO
+
+	glUniform1f(maxHeightShader, (GLfloat)maxHeight);
 }
 
 void AddSmoothNeighbours(int x, int y)
@@ -577,7 +578,7 @@ void displayFunc()
 	// Set up the camera position, focus point, and the up vector.
 	matrix.SetMatrixMode(OpenGLMatrix::ModelView);
 	matrix.LoadIdentity();
-	matrix.LookAt(-1.0, 1.5, 1.5,
+	matrix.LookAt(-0.5, 1.0, 1.5,
 		0.0, 0.0, 0.0,
 		0.0, 1.0, 0.0);
 
@@ -624,18 +625,50 @@ void displayFunc()
 	glutSwapBuffers();
 }
 
-void idleFunc()
+void animate()
 {
-	// Do some stuff... 
-
-	// For example, here, you can save the screenshots to disk (to make the animation).
-	if (frameNum < 5)
+	std::string folder = "../screenshots/";
+	if (frameNum < 50)
 	{
 		renderState = POINT_MODE;
-		std::string folder = "../screenshots/";
+		glUniform1i(shaderMode, (GLint)0);
+		terrainRotate[1] += 0.3f;
 		saveScreenshot((folder + "frame_" + std::to_string(frameNum) + ".jpeg").c_str());
 		frameNum++;
 	}
+	else if (frameNum < 100)
+	{
+		renderState = LINE_MODE;
+		glUniform1i(shaderMode, (GLint)0);
+		terrainRotate[1] += 0.3f;
+
+		saveScreenshot((folder + "frame_" + std::to_string(frameNum) + ".jpeg").c_str());
+		frameNum++;
+	}
+	else if (frameNum < 150)
+	{
+		renderState = SOLID_MODE;
+		glUniform1i(shaderMode, (GLint)0);
+		terrainRotate[1] += 0.3f;
+		saveScreenshot((folder + "frame_" + std::to_string(frameNum) + ".jpeg").c_str());
+		frameNum++;
+	}
+	else if (frameNum < 200)
+	{
+		renderState = SMOOTH_MODE;
+		glUniform1i(shaderMode, (GLint)1);
+		terrainRotate[1] += 0.3f;
+		saveScreenshot((folder + "frame_" + std::to_string(frameNum) + ".jpeg").c_str());
+		frameNum++;
+	}
+}
+
+void idleFunc()
+{
+	// Do some stuff... 
+	// For example, here, you can save the screenshots to disk (to make the animation).
+	// animate();
+
 	// Send the signal that we should call displayFunc.
 	glutPostRedisplay();
 }
@@ -783,27 +816,22 @@ void keyboardFunc(unsigned char key, int x, int y)
 		break;
 	case '1':
 		glUniform1i(shaderMode, (GLint)0);
-		glUniform1f(maxHeightShader, (GLfloat)maxHeight);
 		renderState = POINT_MODE;
 		break;
 	case '2':
 		glUniform1i(shaderMode, (GLint)0);
-		glUniform1f(maxHeightShader, (GLfloat)maxHeight);
 		renderState = LINE_MODE;
 		break;
 	case '3':
 		glUniform1i(shaderMode, (GLint)0);
-		glUniform1f(maxHeightShader, (GLfloat)maxHeight);
 		renderState = SOLID_MODE;
 		break;
 	case '4':
 		glUniform1i(shaderMode, (GLint)1);
-		glUniform1f(maxHeightShader, (GLfloat)maxHeight);
 		renderState = SMOOTH_MODE;
 		break;
 	}
 }
-
 
 int main(int argc, char* argv[])
 {
@@ -871,4 +899,4 @@ int main(int argc, char* argv[])
 
 	// Sink forever into the GLUT loop.
 	glutMainLoop();
-	}
+}
