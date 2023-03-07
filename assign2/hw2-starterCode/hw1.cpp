@@ -59,9 +59,7 @@ GLint shaderMode = 0;
 GLint maxHeightShader = 0;
 int windowWidth = 1280;
 int windowHeight = 720;
-char windowTitle[512] = "CSCI 420 homework I";
-//int numBytesInPositions, numBytesInPositionsLine, numBytesInPositionsSolid;
-//int numBytesInColors, numBytesInColorsLine, numBytesInColorsSolid;
+char windowTitle[512] = "CSCI 420 homework II";
 
 // Width and height of the image
 int imageWidth;
@@ -70,39 +68,6 @@ float scale = 0.002f;
 float maxHeight = 0.0f;
 // Stores the image loaded from disk.
 ImageIO* heightmapImage;
-
-// VBO and VAO for point mode
-std::vector<float> pointPos;
-std::vector<float> pointCol;
-GLuint pointVBO;
-GLuint pointVAO;
-int pointNumVertices;
-
-// VBO and VAO for line mode
-std::vector<float> linePos;
-std::vector<float> lineCol;
-GLuint lineVBO;
-GLuint lineVAO;
-int lineNumVertices;
-
-// VBO and VAO for solid mode
-std::vector<float> solidPos;
-std::vector<float> solidCol;
-GLuint solidVBO;
-GLuint solidVAO;
-int solidNumVertices;
-
-// VBO and VAO for smoothing mode
-std::vector<float> leftSmoothPos;
-std::vector<float> rightSmoothPos;
-std::vector<float> aboveSmoothPos;
-std::vector<float> downSmoothPos;
-std::vector<float> centerSmoothPos;
-// color
-std::vector<float> smoothCol;
-std::vector<std::vector<float>> smoothPosCol;
-GLuint smoothVBO[5]; // last vbio is for center pos and color
-GLuint smoothVAO;
 
 // VBO and VAO for 
 std::vector<float> curvePos;
@@ -136,6 +101,109 @@ Spline* splines;
 // total number of splines 
 int numSplines;
 
+void initSplines(Spline spl)
+{
+	float uStep = 0.001f;
+	float s = 0.5f;
+
+	glm::mat4 basisMat = glm::mat4(
+		-s, 2.0f * s, -s, 0.0f,
+		2.0f - s, s - 3.0f, 0.0f, 1.0f,
+		s - 2.0f, 3.0f - 2.0f * s, s, 0.0f,
+		s, -s, 0.0f, 0.0f);
+	for (int i = 1; i < spl.numControlPoints - 2; i++)
+	{
+		float u = 0.0f;
+		glm::mat3x4 controlMat = glm::mat3x4(
+			spl.points[i - 1].x, spl.points[i].x, spl.points[i + 1].x, spl.points[i + 2].x,
+			spl.points[i - 1].y, spl.points[i].y, spl.points[i + 1].y, spl.points[i + 2].y,
+			spl.points[i - 1].z, spl.points[i].z, spl.points[i + 1].z, spl.points[i + 2].z);
+		while (u < 1.0f)
+		{
+			glm::vec4 params1 = glm::vec4(pow(u, 3), pow(u, 2), u, 1);
+			glm::vec3 p1 = params1 * basisMat * controlMat;
+			curvePos.push_back(p1.x);
+			curvePos.push_back(p1.y);
+			curvePos.push_back(p1.z);
+
+			curveCol.push_back(1.0f);
+			curveCol.push_back(1.0f);
+			curveCol.push_back(1.0f);
+			curveCol.push_back(1.0f);
+
+
+			glm::vec4 params2 = glm::vec4(pow(u + uStep, 3), pow(u + uStep, 2), u + uStep, 1);
+			glm::vec3 p2 = params2 * basisMat * controlMat;
+			curvePos.push_back(p2.x);
+			curvePos.push_back(p2.y);
+			curvePos.push_back(p2.z);
+
+			curveCol.push_back(1.0f);
+			curveCol.push_back(1.0f);
+			curveCol.push_back(1.0f);
+			curveCol.push_back(1.0f);
+
+			u += uStep;
+		}
+	}
+}
+
+int loadSplines(char* argv)
+{
+	cout << argv << endl;
+	char* cName = (char*)malloc(128 * sizeof(char));
+	FILE* fileList;
+	FILE* fileSpline;
+	int iType, i = 0, j, iLength;
+
+	// load the track file 
+	fileList = fopen(argv, "r");
+	if (fileList == NULL)
+	{
+		printf("can't open file\n");
+		exit(1);
+	}
+
+	// stores the number of splines in a global variable 
+	fscanf(fileList, "%d", &numSplines);
+
+	splines = (Spline*)malloc(numSplines * sizeof(Spline));
+
+	// reads through the spline files 
+	for (j = 0; j < numSplines; j++)
+	{
+		i = 0;
+		fscanf(fileList, "%s", cName);
+		fileSpline = fopen(cName, "r");
+
+		if (fileSpline == NULL)
+		{
+			printf("can't open file\n");
+			exit(1);
+		}
+
+		// gets length for spline file
+		fscanf(fileSpline, "%d %d", &iLength, &iType);
+
+		// allocate memory for all the points
+		splines[j].points = (Point*)malloc(iLength * sizeof(Point));
+		splines[j].numControlPoints = iLength;
+
+		// saves the data to the struct
+		while (fscanf(fileSpline, "%f %f %f",
+			&splines[j].points[i].x,
+			&splines[j].points[i].y,
+			&splines[j].points[i].z) != EOF)
+		{
+			i++;
+		}
+	}
+
+	free(cName);
+
+	return 0;
+}
+
 // Write a screenshot to the specified filename.
 void saveScreenshot(const char* filename)
 {
@@ -149,41 +217,6 @@ void saveScreenshot(const char* filename)
 	else cout << "Failed to save file " << filename << '.' << endl;
 
 	delete[] screenshotData;
-}
-
-void renderPointMode()
-{
-	// Execute rendering
-	int numVertex = pointPos.size() / 3;
-	glBindVertexArray(pointVAO);
-	glDrawArrays(GL_POINTS, 0, numVertex);
-	glBindVertexArray(0); // unbind the VAO
-}
-
-void renderLineMode()
-{
-	// Execute rendering
-	int numVertex = linePos.size() / 3;
-	glBindVertexArray(lineVAO);
-	glDrawArrays(GL_LINES, 0, numVertex);
-	glBindVertexArray(0); // unbind the VAO
-}
-
-void renderSolidMode()
-{
-	// Execute rendering
-	int numVertex = solidPos.size() / 3;
-	glBindVertexArray(solidVAO);
-	glDrawArrays(GL_TRIANGLES, 0, numVertex);
-	glBindVertexArray(0); // unbind the VAO
-}
-
-void renderSmoothMode()
-{
-	int numVertex = smoothPosCol[0].size() / 3;
-	glBindVertexArray(smoothVAO);
-	glDrawArrays(GL_TRIANGLES, 0, numVertex);
-	glBindVertexArray(0); // unbind the VAO
 }
 
 void initVBOsMode(GLuint& vbo, GLuint& vao, std::vector<float>& pos, std::vector<float>& col)
@@ -216,162 +249,6 @@ void initVBOsMode(GLuint& vbo, GLuint& vao, std::vector<float>& pos, std::vector
 	glBindVertexArray(0); // unbind the VAO
 }
 
-void initVBOs()
-{
-
-	// POINT_MODE
-	initVBOsMode(pointVBO, pointVAO, pointPos, pointCol);
-
-	// LINE MODE
-	initVBOsMode(lineVBO, lineVAO, linePos, lineCol);
-
-	// SOLID MODE
-	initVBOsMode(solidVBO, solidVAO, solidPos, solidCol);
-
-	// SMOOTH MODE
-	// Neighbour nodes
-	const int stride = 0; // Stride is 0, i.e., data is tightly packed in the VBO.
-	const GLboolean normalized = GL_FALSE; // Normalization is off.
-	for (int i = 0; i < 5; i++)
-	{
-		// Creating the VBO for each vertex
-		glGenBuffers(1, &smoothVBO[i]);
-		glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[i]);
-		if (i == 4) // color and pos data for center 
-		{
-			const int numBytesPos = centerSmoothPos.size() * sizeof(float);
-			const int numBytesCol = smoothCol.size() * sizeof(float);
-			glBufferData(GL_ARRAY_BUFFER, numBytesPos + numBytesCol, nullptr, GL_STATIC_DRAW);
-			glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesPos, centerSmoothPos.data()); // pos data
-			glBufferSubData(GL_ARRAY_BUFFER, numBytesPos, numBytesCol, smoothCol.data()); // pos data
-		}
-		else
-		{
-			const int numBytesPosSmooth = smoothPosCol[i].size() * sizeof(float);
-			glBufferData(GL_ARRAY_BUFFER, numBytesPosSmooth, nullptr, GL_STATIC_DRAW);
-			glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesPosSmooth, smoothPosCol[i].data()); // pos data
-		}
-	}
-	// Bind the VAO
-	glGenVertexArrays(1, &smoothVAO);
-	glBindVertexArray(smoothVAO);
-
-	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "shaderMode");
-	maxHeightShader = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "maxHeight");
-
-	// Neighbours
-	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[0]);
-	const GLuint locationOfPosSmooth1 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position1");
-	glEnableVertexAttribArray(locationOfPosSmooth1);
-	glVertexAttribPointer(locationOfPosSmooth1, 3, GL_FLOAT, normalized, stride, (const void*)0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[1]);
-	const GLuint locationOfPosSmooth2 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position2");
-	glEnableVertexAttribArray(locationOfPosSmooth2);
-	glVertexAttribPointer(locationOfPosSmooth2, 3, GL_FLOAT, normalized, stride, (const void*)0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[2]);
-	const GLuint locationOfPosSmooth3 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position3");
-	glEnableVertexAttribArray(locationOfPosSmooth3);
-	glVertexAttribPointer(locationOfPosSmooth3, 3, GL_FLOAT, normalized, stride, (const void*)0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[3]);
-	const GLuint locationOfPosSmooth4 = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position4");
-	glEnableVertexAttribArray(locationOfPosSmooth4);
-	glVertexAttribPointer(locationOfPosSmooth4, 3, GL_FLOAT, normalized, stride, (const void*)0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, smoothVBO[4]); // center color and pos
-	const GLuint locationOfPosSmooth = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position");
-	glEnableVertexAttribArray(locationOfPosSmooth);
-	glVertexAttribPointer(locationOfPosSmooth, 3, GL_FLOAT, normalized, stride, (const void*)0);
-	const GLuint locationOfColSmooth = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color");
-	glEnableVertexAttribArray(locationOfColSmooth);
-	glVertexAttribPointer(locationOfColSmooth, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)(centerSmoothPos.size() * sizeof(float)));
-
-	glBindVertexArray(0); // unbind the VAO
-
-	glUniform1f(maxHeightShader, (GLfloat)maxHeight);
-}
-
-void AddSmoothNeighbours(int x, int y)
-{
-	int numVertices = 3;
-	// center point:
-	float centerPos[3];
-
-	centerPos[0] = static_cast<float>(y) / imageHeight;
-	centerPos[1] = scale * heightmapImage->getPixel(x, y, 0);
-	centerPos[2] = static_cast<float>(x) / imageWidth;
-
-	// above point: (i, j + 1)
-	float abovePos[3];
-
-	abovePos[0] = static_cast<float>(y + 1) / imageHeight;
-	abovePos[1] = scale * heightmapImage->getPixel(x, y + 1, 0);
-	abovePos[2] = static_cast<float>(x) / imageWidth;
-
-	// right: (i + 1, j)
-	float rightPos[3];
-
-	rightPos[0] = static_cast<float>(y) / imageHeight;
-	rightPos[1] = scale * heightmapImage->getPixel(x + 1, y, 0);
-	rightPos[2] = static_cast<float>(x + 1) / imageWidth;
-
-	// left: (i - 1, j)
-	float leftPos[3];
-
-	leftPos[0] = static_cast<float>(y) / imageHeight;
-	leftPos[1] = scale * heightmapImage->getPixel(x - 1, y, 0);
-	leftPos[2] = static_cast<float>(x - 1) / imageWidth;
-
-	// down: (i, j - 1)
-	float downPos[3];
-
-	downPos[0] = static_cast<float>(y - 1) / imageHeight;
-	downPos[1] = scale * heightmapImage->getPixel(x, y - 1, 0);
-	downPos[2] = static_cast<float>(x) / imageWidth;
-
-	// insert
-	if (x - 1 < 0) // no valid left
-	{
-		leftSmoothPos.insert(leftSmoothPos.end(), centerPos, centerPos + numVertices);
-	}
-	else
-	{
-		leftSmoothPos.insert(leftSmoothPos.end(), leftPos, leftPos + numVertices);
-	}
-	if (x + 1 > imageWidth - 1) // no valid right
-	{
-		rightSmoothPos.insert(rightSmoothPos.end(), centerPos, centerPos + numVertices);
-	}
-	else
-	{
-		rightSmoothPos.insert(rightSmoothPos.end(), rightPos, rightPos + numVertices);
-	}
-	if (y - 1 < 0) // no valid down
-	{
-		downSmoothPos.insert(downSmoothPos.end(), centerPos, centerPos + numVertices);
-	}
-	else
-	{
-		downSmoothPos.insert(downSmoothPos.end(), downPos, downPos + numVertices);
-	}
-	if (y + 1 > imageHeight - 1) // no valid up
-	{
-		aboveSmoothPos.insert(aboveSmoothPos.end(), centerPos, centerPos + numVertices);
-	}
-	else
-	{
-		aboveSmoothPos.insert(aboveSmoothPos.end(), abovePos, abovePos + numVertices);
-	}
-	//center
-	centerSmoothPos.insert(centerSmoothPos.end(), centerPos, centerPos + 3);
-	smoothCol.push_back(scale * heightmapImage->getPixel(x, y, 0));
-	smoothCol.push_back(scale * heightmapImage->getPixel(x, y, 0));
-	smoothCol.push_back(scale * heightmapImage->getPixel(x, y, 0));
-	smoothCol.push_back(1.0f);
-}
-
 // initialize the scene
 void initScene(int argc, char* argv[])
 {
@@ -390,6 +267,12 @@ void initScene(int argc, char* argv[])
 		abort();
 	}
 	pipelineProgram->Bind();
+
+	// init the splines
+	for (int i = 0; i < numSplines; i++)
+	{
+		initSplines(splines[i]);
+	}
 
 	initVBOsMode(curveVBO, curveVAO, curvePos, curveCol);
 
@@ -484,6 +367,7 @@ void idleFunc()
 	// Do some stuff... 
 	// For example, here, you can save the screenshots to disk (to make the animation).
 	// animate();
+	saveScreenshot("star.jpeg");
 
 	// Send the signal that we should call displayFunc.
 	glutPostRedisplay();
@@ -647,113 +531,6 @@ void keyboardFunc(unsigned char key, int x, int y)
 		renderState = SMOOTH_MODE;
 		break;
 	}
-}
-
-// Assignment 2: splines functions
-
-void initSplines(Spline spl)
-{
-	float uStep = 0.001f;
-	float u = 0.0f;
-	float s = 0.5f;
-	// glm::mat4 matrix;
-
-	glm::mat4 basisMat = glm::mat4(-s, 2 * s, -s, 0,
-		2 - s, s - 3, 0, 1,
-		s - 2, 3 - 2 * s, s, 0,
-		s, -s, 0, 0);
-	glm::mat3x4 controlMat = glm::mat3x4(
-		spl.points[0].x, spl.points[1].x, spl.points[2].x, spl.points[3].x,
-		spl.points[0].y, spl.points[1].y, spl.points[2].y, spl.points[3].y,
-		spl.points[0].z, spl.points[1].z, spl.points[2].z, spl.points[3].z);
-	while (u < 1.0f)
-	{
-		glm::vec4 params1 = glm::vec4(pow(u, 3), pow(u, 2), u, 1);
-		glm::vec3 p1 = (params1 * basisMat) * controlMat;
-		curvePos.push_back(p1.x);
-		curvePos.push_back(p1.y);
-		curvePos.push_back(p1.z);
-
-		curveCol.push_back(1.0f);
-		curveCol.push_back(1.0f);
-		curveCol.push_back(1.0f);
-		curveCol.push_back(1.0f);
-
-		u += uStep;
-
-		glm::vec4 params2 = glm::vec4(pow(u, 3), pow(u, 2), u, 1);
-		glm::vec3 p2 = (params2 * basisMat) * controlMat;
-		curvePos.push_back(p2.x);
-		curvePos.push_back(p2.y);
-		curvePos.push_back(p2.z);
-
-		curveCol.push_back(1.0f);
-		curveCol.push_back(1.0f);
-		curveCol.push_back(1.0f);
-		curveCol.push_back(1.0f);
-	}
-}
-
-int loadSplines(char* argv)
-{
-	cout << argv << endl;
-	char* cName = (char*)malloc(128 * sizeof(char));
-	FILE* fileList;
-	FILE* fileSpline;
-	int iType, i = 0, j, iLength;
-
-	// load the track file 
-	fileList = fopen(argv, "r");
-	if (fileList == NULL)
-	{
-		printf("can't open file\n");
-		exit(1);
-	}
-
-	// stores the number of splines in a global variable 
-	fscanf(fileList, "%d", &numSplines);
-
-	splines = (Spline*)malloc(numSplines * sizeof(Spline));
-
-	// reads through the spline files 
-	for (j = 0; j < numSplines; j++)
-	{
-		i = 0;
-		fscanf(fileList, "%s", cName);
-		fileSpline = fopen(cName, "r");
-
-		if (fileSpline == NULL)
-		{
-			printf("can't open file\n");
-			exit(1);
-		}
-
-		// gets length for spline file
-		fscanf(fileSpline, "%d %d", &iLength, &iType);
-
-		// allocate memory for all the points
-		splines[j].points = (Point*)malloc(iLength * sizeof(Point));
-		splines[j].numControlPoints = iLength;
-
-		// saves the data to the struct
-		while (fscanf(fileSpline, "%f %f %f",
-			&splines[j].points[i].x,
-			&splines[j].points[i].y,
-			&splines[j].points[i].z) != EOF)
-		{
-			i++;
-		}
-	}
-
-	// init the splines
-	for (int i = 0; i < numSplines; i++)
-	{
-		initSplines(splines[i]);
-	}
-
-	free(cName);
-
-	return 0;
 }
 
 int initTexture(const char* imageFilename, GLuint textureHandle)
