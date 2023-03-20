@@ -66,6 +66,7 @@ int imageWidth;
 int imageHeight;
 float scale = 0.002f;
 float maxHeight = 0.0f;
+
 // Stores the image loaded from disk.
 ImageIO* heightmapImage;
 
@@ -79,6 +80,18 @@ GLuint curveVAO;
 int frameNum = 0;
 OpenGLMatrix matrix;
 BasicPipelineProgram* pipelineProgram;
+
+// camera data structure
+struct CameraMovement
+{
+	glm::vec3 p;
+	glm::vec3 t;
+	glm::vec3 n;
+	glm::vec3 b;
+	CameraMovement(glm::vec3 tang, glm::vec3 norm, glm::vec3 binorm, glm::vec3 pos) : t(tang), n(norm), b(binorm), p(pos) {}
+};
+unsigned int sloanIndex = 0;
+std::vector<CameraMovement*> camTransition; // track the coordinate system of each point on spline
 
 // represents one control point along the spline 
 struct Point
@@ -101,6 +114,18 @@ Spline* splines;
 // total number of splines 
 int numSplines;
 
+void CurvePointCalc()
+{
+}
+
+void Subdivide(Point& u0, Point& u1, float maxLength)
+{
+	Point umid;
+	umid.x = (u0.x + u1.x) / 2.0f;
+	umid.y = (u0.y + u1.y) / 2.0f;
+	umid.z = (u0.z + u1.z) / 2.0f;
+}
+
 void initSplines(Spline spl)
 {
 	float uStep = 0.001f;
@@ -111,6 +136,7 @@ void initSplines(Spline spl)
 		2.0f - s, s - 3.0f, 0.0f, 1.0f,
 		s - 2.0f, 3.0f - 2.0f * s, s, 0.0f,
 		s, -s, 0.0f, 0.0f);
+
 	for (int i = 1; i < spl.numControlPoints - 2; i++)
 	{
 		float u = 0.0f;
@@ -118,10 +144,13 @@ void initSplines(Spline spl)
 			spl.points[i - 1].x, spl.points[i].x, spl.points[i + 1].x, spl.points[i + 2].x,
 			spl.points[i - 1].y, spl.points[i].y, spl.points[i + 1].y, spl.points[i + 2].y,
 			spl.points[i - 1].z, spl.points[i].z, spl.points[i + 1].z, spl.points[i + 2].z);
+
+		// initial arbitrary vector
+		glm::vec3 v = glm::vec3(0.0f, 0.0f, 5.0f);
+
 		while (u < 1.0f)
 		{
-			glm::vec4 params1 = glm::vec4(pow(u, 3), pow(u, 2), u, 1);
-			glm::vec3 p1 = params1 * basisMat * controlMat;
+			glm::vec3 p1 = glm::vec4(pow(u, 3), pow(u, 2), u, 1) * basisMat * controlMat;
 			curvePos.push_back(p1.x);
 			curvePos.push_back(p1.y);
 			curvePos.push_back(p1.z);
@@ -131,9 +160,27 @@ void initSplines(Spline spl)
 			curveCol.push_back(1.0f);
 			curveCol.push_back(1.0f);
 
+			// move camera along the main point
+			glm::vec3 normal;
+			glm::vec3 binormal;
+			glm::vec3 tangent = glm::vec4(3.0f * pow(u, 2), 2.0f * u, 1.0f, 0.0f) * basisMat * controlMat; // tangent
 
-			glm::vec4 params2 = glm::vec4(pow(u + uStep, 3), pow(u + uStep, 2), u + uStep, 1);
-			glm::vec3 p2 = params2 * basisMat * controlMat;
+			if (sloanIndex == 0)
+			{
+				normal = glm::normalize(glm::cross(tangent, v));
+				binormal = glm::normalize(glm::cross(tangent, normal));
+			}
+			else
+			{
+				normal = glm::normalize(glm::cross(camTransition[sloanIndex - 1]->b, tangent));
+				binormal = glm::normalize(glm::cross(tangent, normal));
+			}
+			CameraMovement* camMov = new CameraMovement(tangent, normal, binormal, p1);
+			camTransition.push_back(camMov);
+			sloanIndex++;
+
+			// second point
+			glm::vec3 p2 = glm::vec4(pow(u + uStep, 3), pow(u + uStep, 2), u + uStep, 1) * basisMat * controlMat;
 			curvePos.push_back(p2.x);
 			curvePos.push_back(p2.y);
 			curvePos.push_back(p2.z);
@@ -143,6 +190,7 @@ void initSplines(Spline spl)
 			curveCol.push_back(1.0f);
 			curveCol.push_back(1.0f);
 
+			// modify for realistic gravity
 			u += uStep;
 		}
 	}
@@ -273,7 +321,7 @@ void initScene(int argc, char* argv[])
 	{
 		initSplines(splines[i]);
 	}
-
+	sloanIndex = 0;
 	initVBOsMode(curveVBO, curveVAO, curvePos, curveCol);
 
 	// Check for any OpenGL errors.
@@ -288,9 +336,29 @@ void displayFunc()
 	// Set up the camera position, focus point, and the up vector.
 	matrix.SetMatrixMode(OpenGLMatrix::ModelView);
 	matrix.LoadIdentity();
-	matrix.LookAt(-0.5, 1.0, 1.5,
-		0.0, 0.0, 0.0,
-		0.0, 1.0, 0.0);
+	// update camera in here?
+	if (sloanIndex < camTransition.size())
+	{
+		matrix.LookAt(
+			camTransition[sloanIndex]->p.x,
+			camTransition[sloanIndex]->p.y,
+			camTransition[sloanIndex]->p.z,
+			camTransition[sloanIndex]->t.x,
+			camTransition[sloanIndex]->t.y,
+			camTransition[sloanIndex]->t.z,
+			camTransition[sloanIndex]->n.x,
+			camTransition[sloanIndex]->n.y,
+			camTransition[sloanIndex]->n.z);
+		sloanIndex++;
+	}
+	else
+	{
+		sloanIndex = 0;
+
+	}
+	//if (sloanIndex >= camTransition.size())
+	//{
+	//}
 
 	// In here, you can do additional modeling on the object, such as performing translations, rotations and scales.
 	// ...
@@ -324,50 +392,11 @@ void displayFunc()
 	glutSwapBuffers();
 }
 
-void animate()
-{
-	std::string folder = "../screenshots/";
-	if (frameNum < 50)
-	{
-		renderState = POINT_MODE;
-		glUniform1i(shaderMode, (GLint)0);
-		terrainRotate[1] += 0.3f;
-		saveScreenshot((folder + "frame_" + std::to_string(frameNum) + ".jpeg").c_str());
-		frameNum++;
-	}
-	else if (frameNum < 100)
-	{
-		renderState = LINE_MODE;
-		glUniform1i(shaderMode, (GLint)0);
-		terrainRotate[1] += 0.3f;
-
-		saveScreenshot((folder + "frame_" + std::to_string(frameNum) + ".jpeg").c_str());
-		frameNum++;
-	}
-	else if (frameNum < 150)
-	{
-		renderState = SOLID_MODE;
-		glUniform1i(shaderMode, (GLint)0);
-		terrainRotate[1] += 0.3f;
-		saveScreenshot((folder + "frame_" + std::to_string(frameNum) + ".jpeg").c_str());
-		frameNum++;
-	}
-	else if (frameNum < 200)
-	{
-		renderState = SMOOTH_MODE;
-		glUniform1i(shaderMode, (GLint)1);
-		terrainRotate[1] += 0.3f;
-		saveScreenshot((folder + "frame_" + std::to_string(frameNum) + ".jpeg").c_str());
-		frameNum++;
-	}
-}
 
 void idleFunc()
 {
 	// Do some stuff... 
 	// For example, here, you can save the screenshots to disk (to make the animation).
-	// animate();
-	saveScreenshot("star.jpeg");
 
 	// Send the signal that we should call displayFunc.
 	glutPostRedisplay();
