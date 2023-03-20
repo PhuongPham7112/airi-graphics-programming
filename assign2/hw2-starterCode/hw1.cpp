@@ -160,10 +160,22 @@ void initSplines(Spline spl)
 			curveCol.push_back(1.0f);
 			curveCol.push_back(1.0f);
 
+
+			// second point
+			glm::vec3 p2 = glm::vec4(pow(u + uStep, 3), pow(u + uStep, 2), u + uStep, 1) * basisMat * controlMat;
+			curvePos.push_back(p2.x);
+			curvePos.push_back(p2.y);
+			curvePos.push_back(p2.z);
+
+			curveCol.push_back(1.0f);
+			curveCol.push_back(1.0f);
+			curveCol.push_back(1.0f);
+			curveCol.push_back(1.0f);
+
 			// move camera along the main point
 			glm::vec3 normal;
 			glm::vec3 binormal;
-			glm::vec3 tangent = glm::vec4(3.0f * pow(u, 2), 2.0f * u, 1.0f, 0.0f) * basisMat * controlMat; // tangent
+			glm::vec3 tangent = glm::normalize(glm::vec4(3.0f * pow(u, 2), 2.0f * u, 1.0f, 0.0f) * basisMat * controlMat); // tangent
 
 			if (sloanIndex == 0)
 			{
@@ -178,17 +190,6 @@ void initSplines(Spline spl)
 			CameraMovement* camMov = new CameraMovement(tangent, normal, binormal, p1);
 			camTransition.push_back(camMov);
 			sloanIndex++;
-
-			// second point
-			glm::vec3 p2 = glm::vec4(pow(u + uStep, 3), pow(u + uStep, 2), u + uStep, 1) * basisMat * controlMat;
-			curvePos.push_back(p2.x);
-			curvePos.push_back(p2.y);
-			curvePos.push_back(p2.z);
-
-			curveCol.push_back(1.0f);
-			curveCol.push_back(1.0f);
-			curveCol.push_back(1.0f);
-			curveCol.push_back(1.0f);
 
 			// modify for realistic gravity
 			u += uStep;
