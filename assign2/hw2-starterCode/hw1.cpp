@@ -10,6 +10,7 @@
 #include "imageIO.h"
 #include "openGLHeader.h"
 #include "glutHeader.h"
+#include <cmath>
 #include <vector>
 #include <iostream>
 #include <cstring>
@@ -65,33 +66,16 @@ char windowTitle[512] = "CSCI 420 homework II";
 int imageWidth;
 int imageHeight;
 float scale = 0.002f;
-float maxHeight = 0.0f;
+float maxHeight = -INFINITY;
 
 // Stores the image loaded from disk.
 ImageIO* heightmapImage;
 
-// VBO and VAO for 
-std::vector<float> curvePos;
-std::vector<float> curveCol;
-GLuint curveVBO;
-GLuint curveVAO;
 
 // CSCI 420 helper classes.
 int frameNum = 0;
 OpenGLMatrix matrix;
 BasicPipelineProgram* pipelineProgram;
-
-// camera data structure
-struct CameraMovement
-{
-	glm::vec3 p;
-	glm::vec3 t;
-	glm::vec3 n;
-	glm::vec3 b;
-	CameraMovement(glm::vec3 tang, glm::vec3 norm, glm::vec3 binorm, glm::vec3 pos) : t(tang), n(norm), b(binorm), p(pos) {}
-};
-unsigned int sloanIndex = 0;
-std::vector<CameraMovement*> camTransition; // track the coordinate system of each point on spline
 
 // represents one control point along the spline 
 struct Point
@@ -114,9 +98,24 @@ Spline* splines;
 // total number of splines 
 int numSplines;
 
-void CurvePointCalc()
+// camera data structure
+struct SloanPoint
 {
-}
+	glm::vec3 p; // position
+	glm::vec3 t; // tangent
+	glm::vec3 n; // normal
+	glm::vec3 b; // binormal
+	SloanPoint(glm::vec3 tang, glm::vec3 norm, glm::vec3 binorm, glm::vec3 pos) : t(tang), n(norm), b(binorm), p(pos) {}
+};
+unsigned int sloanIndex = 0;
+std::vector<SloanPoint*> camTransition; // track the coordinate system of each point on spline
+
+// VBO and VAO for the rail 
+std::vector<float> curvePos;
+std::vector<float> curveCol;
+std::vector<SloanPoint*> crossRail;
+GLuint curveVBO;
+GLuint curveVAO;
 
 void Subdivide(Point& u0, Point& u1, float maxLength)
 {
@@ -126,7 +125,46 @@ void Subdivide(Point& u0, Point& u1, float maxLength)
 	umid.z = (u0.z + u1.z) / 2.0f;
 }
 
-void initSplines(Spline spl)
+void insertPointPos(std::vector<float>& pointList, glm::vec3& point)
+{
+	pointList.push_back(point.x);
+	pointList.push_back(point.y);
+	pointList.push_back(point.z);
+}
+
+void insertPointCol(std::vector<float>& pointList, glm::vec3& col)
+{
+	pointList.push_back(col.x);
+	pointList.push_back(col.y);
+	pointList.push_back(col.z);
+	pointList.push_back(1.0f);
+}
+
+SloanPoint* initSloanPoint(glm::mat4& basisMat, glm::mat3x4& controlMat, float u, std::vector<SloanPoint*>& pointList)
+{
+	// initial arbitrary vector
+	glm::vec3 v = glm::vec3(0.0f, 0.0f, 5.0f);
+	glm::vec3 normal;
+	glm::vec3 binormal;
+	glm::vec3 pos = glm::vec4(pow(u, 3), pow(u, 2), u, 1) * basisMat * controlMat;
+	glm::vec3 tangent = glm::normalize(glm::vec4(3.0f * pow(u, 2), 2.0f * u, 1.0f, 0.0f) * basisMat * controlMat); // tangent
+	int lastIndex = pointList.size() - 1;
+	//cout << "Last index = " << lastIndex << ", last value = " <<  << endl;
+	if (pointList.size() == 0)
+	{
+		normal = glm::normalize(glm::cross(tangent, v));
+		binormal = glm::normalize(glm::cross(tangent, normal));
+	}
+	else
+	{
+		normal = glm::normalize(glm::cross(pointList[lastIndex]->b, tangent));
+		binormal = glm::normalize(glm::cross(tangent, normal));
+	}
+	SloanPoint* point = new SloanPoint(tangent, normal, binormal, pos);
+	return point;
+}
+
+void initCameraMove(Spline spl)
 {
 	float uStep = 0.001f;
 	float s = 0.5f;
@@ -150,48 +188,121 @@ void initSplines(Spline spl)
 
 		while (u < 1.0f)
 		{
-			glm::vec3 p1 = glm::vec4(pow(u, 3), pow(u, 2), u, 1) * basisMat * controlMat;
-			curvePos.push_back(p1.x);
-			curvePos.push_back(p1.y);
-			curvePos.push_back(p1.z);
-
-			curveCol.push_back(1.0f);
-			curveCol.push_back(1.0f);
-			curveCol.push_back(1.0f);
-			curveCol.push_back(1.0f);
-
-
-			// second point
-			glm::vec3 p2 = glm::vec4(pow(u + uStep, 3), pow(u + uStep, 2), u + uStep, 1) * basisMat * controlMat;
-			curvePos.push_back(p2.x);
-			curvePos.push_back(p2.y);
-			curvePos.push_back(p2.z);
-
-			curveCol.push_back(1.0f);
-			curveCol.push_back(1.0f);
-			curveCol.push_back(1.0f);
-			curveCol.push_back(1.0f);
-
 			// move camera along the main point
-			glm::vec3 normal;
-			glm::vec3 binormal;
-			glm::vec3 tangent = glm::normalize(glm::vec4(3.0f * pow(u, 2), 2.0f * u, 1.0f, 0.0f) * basisMat * controlMat); // tangent
-
-			if (sloanIndex == 0)
-			{
-				normal = glm::normalize(glm::cross(tangent, v));
-				binormal = glm::normalize(glm::cross(tangent, normal));
-			}
-			else
-			{
-				normal = glm::normalize(glm::cross(camTransition[sloanIndex - 1]->b, tangent));
-				binormal = glm::normalize(glm::cross(tangent, normal));
-			}
-			CameraMovement* camMov = new CameraMovement(tangent, normal, binormal, p1);
-			camTransition.push_back(camMov);
-			sloanIndex++;
-
+			SloanPoint* sl = initSloanPoint(basisMat, controlMat, u, camTransition);
+			sl->p += sl->n * 0.1f;
+			camTransition.push_back(sl);
+			// update max height
 			// modify for realistic gravity
+			glm::vec3 unnormTang = glm::vec4(3.0f * pow(u, 2), 2.0f * u, 1.0f, 0.0f) * basisMat * controlMat;
+			uStep = 0.0016f * sqrt(2.0f * 9.8f * (maxHeight - sl->p.z)) / (glm::length(unnormTang));
+			u += uStep;
+		}
+	}
+}
+
+void initSplines(Spline spl)
+{
+	float uStep = 0.001f;
+	float s = 0.5f;
+	float alpha = 0.05f;
+
+	glm::mat4 basisMat = glm::mat4(
+		-s, 2.0f * s, -s, 0.0f,
+		2.0f - s, s - 3.0f, 0.0f, 1.0f,
+		s - 2.0f, 3.0f - 2.0f * s, s, 0.0f,
+		s, -s, 0.0f, 0.0f);
+
+	for (int i = 1; i < spl.numControlPoints - 2; i++)
+	{
+		float u = 0.0f;
+		glm::mat3x4 controlMat = glm::mat3x4(
+			spl.points[i - 1].x, spl.points[i].x, spl.points[i + 1].x, spl.points[i + 2].x,
+			spl.points[i - 1].y, spl.points[i].y, spl.points[i + 1].y, spl.points[i + 2].y,
+			spl.points[i - 1].z, spl.points[i].z, spl.points[i + 1].z, spl.points[i + 2].z);
+
+		// initial arbitrary vector
+		glm::vec3 v = glm::vec3(0.0f, 0.0f, 5.0f);
+
+		while (u < 1.0f)
+		{
+			glm::vec3 white = glm::vec3(1.0f, 1.0f, 1.0f);
+			SloanPoint* sl1 = initSloanPoint(basisMat, controlMat, u, crossRail);
+			glm::vec3 v0 = sl1->p + alpha * (-sl1->n + sl1->b);
+			glm::vec3 v1 = sl1->p + alpha * (sl1->n + sl1->b);
+			glm::vec3 v2 = sl1->p + alpha * (sl1->n - sl1->b);
+			glm::vec3 v3 = sl1->p + alpha * (-sl1->n - sl1->b);
+
+			crossRail.push_back(sl1);
+
+			SloanPoint* sl2 = initSloanPoint(basisMat, controlMat, u + uStep, crossRail);
+			glm::vec3 v4 = sl2->p + alpha * (-sl2->n + sl2->b);
+			glm::vec3 v5 = sl2->p + alpha * (sl2->n + sl2->b);
+			glm::vec3 v6 = sl2->p + alpha * (sl2->n - sl2->b);
+			glm::vec3 v7 = sl2->p + alpha * (-sl2->n - sl2->b);
+
+			// top
+			insertPointPos(curvePos, v1);
+			insertPointPos(curvePos, v5);
+			insertPointPos(curvePos, v2);
+			insertPointPos(curvePos, v6);
+			insertPointPos(curvePos, v5);
+			insertPointPos(curvePos, v2);
+			insertPointCol(curveCol, -sl1->n);
+			insertPointCol(curveCol, -sl1->n);
+			insertPointCol(curveCol, -sl1->n);
+			insertPointCol(curveCol, -sl1->n);
+			insertPointCol(curveCol, -sl1->n);
+			insertPointCol(curveCol, -sl1->n);
+
+			// right
+			insertPointPos(curvePos, v1);
+			insertPointPos(curvePos, v5);
+			insertPointPos(curvePos, v0);
+			insertPointPos(curvePos, v4);
+			insertPointPos(curvePos, v5);
+			insertPointPos(curvePos, v0);
+			insertPointCol(curveCol, -sl1->b);
+			insertPointCol(curveCol, -sl1->b);
+			insertPointCol(curveCol, -sl1->b);
+			insertPointCol(curveCol, -sl1->b);
+			insertPointCol(curveCol, -sl1->b);
+			insertPointCol(curveCol, -sl1->b);
+
+			// left
+			insertPointPos(curvePos, v2);
+			insertPointPos(curvePos, v6);
+			insertPointPos(curvePos, v3);
+			insertPointPos(curvePos, v7);
+			insertPointPos(curvePos, v6);
+			insertPointPos(curvePos, v3);
+			insertPointCol(curveCol, sl1->b);
+			insertPointCol(curveCol, sl1->b);
+			insertPointCol(curveCol, sl1->b);
+			insertPointCol(curveCol, sl1->b);
+			insertPointCol(curveCol, sl1->b);
+			insertPointCol(curveCol, sl1->b);
+
+			// bottom
+			insertPointPos(curvePos, v0);
+			insertPointPos(curvePos, v4);
+			insertPointPos(curvePos, v3);
+			insertPointPos(curvePos, v7);
+			insertPointPos(curvePos, v4);
+			insertPointPos(curvePos, v3);
+			insertPointCol(curveCol, sl1->n);
+			insertPointCol(curveCol, sl1->n);
+			insertPointCol(curveCol, sl1->n);
+			insertPointCol(curveCol, sl1->n);
+			insertPointCol(curveCol, sl1->n);
+			insertPointCol(curveCol, sl1->n);
+
+			// find max height
+			if (sl1->p.z > maxHeight)
+			{
+				maxHeight = sl1->p.z;
+			}
+
 			u += uStep;
 		}
 	}
@@ -322,6 +433,10 @@ void initScene(int argc, char* argv[])
 	{
 		initSplines(splines[i]);
 	}
+	for (int i = 0; i < numSplines; i++)
+	{
+		initCameraMove(splines[i]);
+	}
 	sloanIndex = 0;
 	initVBOsMode(curveVBO, curveVAO, curvePos, curveCol);
 
@@ -344,9 +459,9 @@ void displayFunc()
 			camTransition[sloanIndex]->p.x,
 			camTransition[sloanIndex]->p.y,
 			camTransition[sloanIndex]->p.z,
-			camTransition[sloanIndex]->t.x,
-			camTransition[sloanIndex]->t.y,
-			camTransition[sloanIndex]->t.z,
+			camTransition[sloanIndex]->t.x + camTransition[sloanIndex]->p.x,
+			camTransition[sloanIndex]->t.y + camTransition[sloanIndex]->p.y,
+			camTransition[sloanIndex]->t.z + camTransition[sloanIndex]->p.z,
 			camTransition[sloanIndex]->n.x,
 			camTransition[sloanIndex]->n.y,
 			camTransition[sloanIndex]->n.z);
@@ -355,11 +470,7 @@ void displayFunc()
 	else
 	{
 		sloanIndex = 0;
-
 	}
-	//if (sloanIndex >= camTransition.size())
-	//{
-	//}
 
 	// In here, you can do additional modeling on the object, such as performing translations, rotations and scales.
 	// ...
@@ -386,7 +497,7 @@ void displayFunc()
 	pipelineProgram->SetProjectionMatrix(projectionMatrix);
 
 	glBindVertexArray(curveVAO);
-	glDrawArrays(GL_LINES, 0, curvePos.size() / 3);
+	glDrawArrays(GL_TRIANGLES, 0, curvePos.size() / 3);
 	glBindVertexArray(0); // unbind the VAO
 
 	// Swap the double-buffers.
