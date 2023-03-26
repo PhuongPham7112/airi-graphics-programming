@@ -137,7 +137,6 @@ void insertPointCol(std::vector<float>& pointList, glm::vec3& col)
 	pointList.push_back(col.x);
 	pointList.push_back(col.y);
 	pointList.push_back(col.z);
-	pointList.push_back(1.0f);
 }
 
 SloanPoint* initSloanPoint(glm::mat4& basisMat, glm::mat3x4& controlMat, float u, std::vector<SloanPoint*>& pointList)
@@ -249,10 +248,10 @@ void initSplines(Spline spl)
 			insertPointPos(curvePos, v5);
 			insertPointPos(curvePos, v2);
 			insertPointCol(curveCol, -sl1->n);
+			insertPointCol(curveCol, -sl2->n);
 			insertPointCol(curveCol, -sl1->n);
-			insertPointCol(curveCol, -sl1->n);
-			insertPointCol(curveCol, -sl1->n);
-			insertPointCol(curveCol, -sl1->n);
+			insertPointCol(curveCol, -sl2->n);
+			insertPointCol(curveCol, -sl2->n);
 			insertPointCol(curveCol, -sl1->n);
 
 			// right
@@ -263,10 +262,10 @@ void initSplines(Spline spl)
 			insertPointPos(curvePos, v5);
 			insertPointPos(curvePos, v0);
 			insertPointCol(curveCol, -sl1->b);
+			insertPointCol(curveCol, -sl2->b);
 			insertPointCol(curveCol, -sl1->b);
-			insertPointCol(curveCol, -sl1->b);
-			insertPointCol(curveCol, -sl1->b);
-			insertPointCol(curveCol, -sl1->b);
+			insertPointCol(curveCol, -sl2->b);
+			insertPointCol(curveCol, -sl2->b);
 			insertPointCol(curveCol, -sl1->b);
 
 			// left
@@ -277,10 +276,10 @@ void initSplines(Spline spl)
 			insertPointPos(curvePos, v6);
 			insertPointPos(curvePos, v3);
 			insertPointCol(curveCol, sl1->b);
+			insertPointCol(curveCol, sl2->b);
 			insertPointCol(curveCol, sl1->b);
-			insertPointCol(curveCol, sl1->b);
-			insertPointCol(curveCol, sl1->b);
-			insertPointCol(curveCol, sl1->b);
+			insertPointCol(curveCol, sl2->b);
+			insertPointCol(curveCol, sl2->b);
 			insertPointCol(curveCol, sl1->b);
 
 			// bottom
@@ -291,10 +290,10 @@ void initSplines(Spline spl)
 			insertPointPos(curvePos, v4);
 			insertPointPos(curvePos, v3);
 			insertPointCol(curveCol, sl1->n);
+			insertPointCol(curveCol, sl2->n);
 			insertPointCol(curveCol, sl1->n);
-			insertPointCol(curveCol, sl1->n);
-			insertPointCol(curveCol, sl1->n);
-			insertPointCol(curveCol, sl1->n);
+			insertPointCol(curveCol, sl2->n);
+			insertPointCol(curveCol, sl2->n);
 			insertPointCol(curveCol, sl1->n);
 
 			// find max height
@@ -405,7 +404,7 @@ void initVBOsMode(GLuint& vbo, GLuint& vao, std::vector<float>& pos, std::vector
 	// Set up the relationship between the "color" shader variable and the VAO.
 	const GLuint locationOfColor = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "color"); // Obtain a handle to the shader variable "color".
 	glEnableVertexAttribArray(locationOfColor); // Must always enable the vertex attribute. By default, it is disabled.
-	glVertexAttribPointer(locationOfColor, 4, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositions); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
+	glVertexAttribPointer(locationOfColor, 3, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositions); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
 	glBindVertexArray(0); // unbind the VAO
 }
 
