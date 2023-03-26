@@ -6,6 +6,7 @@
   Student username: phuongp
 */
 #include "basicPipelineProgram.h"
+#include "groundPipelineProgram.h"
 #include "openGLMatrix.h"
 #include "imageIO.h"
 #include "openGLHeader.h"
@@ -69,13 +70,13 @@ float scale = 0.002f;
 float maxHeight = -INFINITY;
 
 // Stores the image loaded from disk.
-ImageIO* heightmapImage;
-
+ImageIO* groundImage;
 
 // CSCI 420 helper classes.
 int frameNum = 0;
 OpenGLMatrix matrix;
 BasicPipelineProgram* pipelineProgram;
+GroundPipelineProgram* groundPipelineProgram;
 
 // represents one control point along the spline 
 struct Point
@@ -116,6 +117,13 @@ std::vector<float> curveCol;
 std::vector<SloanPoint*> crossRail;
 GLuint curveVBO;
 GLuint curveVAO;
+
+// texture
+std::vector<float> groundPos;
+std::vector<float> texCoord;
+GLuint groundVBO;
+GLuint groundVAO;
+GLuint texHandle;
 
 void Subdivide(Point& u0, Point& u1, float maxLength)
 {
@@ -189,7 +197,7 @@ void initCameraMove(Spline spl)
 		{
 			// move camera along the main point
 			SloanPoint* sl = initSloanPoint(basisMat, controlMat, u, camTransition);
-			sl->p += sl->n * 0.1f;
+			sl->p -= sl->b * 0.15f;
 			camTransition.push_back(sl);
 			// update max height
 			// modify for realistic gravity
@@ -396,8 +404,6 @@ void initVBOsMode(GLuint& vbo, GLuint& vao, std::vector<float>& pos, std::vector
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 	// Set up the relationship between the "position" shader variable and the VAO.
-	shaderMode = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "shaderMode");
-	maxHeightShader = glGetUniformLocation(pipelineProgram->GetProgramHandle(), "maxHeight");
 	const GLuint locationOfPosition = glGetAttribLocation(pipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
 	glEnableVertexAttribArray(locationOfPosition); // Must always enable the vertex attribute. By default, it is disabled.
 	glVertexAttribPointer(locationOfPosition, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
@@ -408,12 +414,154 @@ void initVBOsMode(GLuint& vbo, GLuint& vao, std::vector<float>& pos, std::vector
 	glBindVertexArray(0); // unbind the VAO
 }
 
+void initTextureVBO(GLuint& vbo, GLuint& vao, std::vector<float>& pos, std::vector<float>& coord)
+{
+	const int stride = 0; // Stride is 0, i.e., data is tightly packed in the VBO.
+	const GLboolean normalized = GL_FALSE; // Normalization is off.
+
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	// First, allocate an empty VBO of the correct size to hold positions and colors.
+	const int numBytesInPositions = pos.size() * sizeof(float);
+	const int numBytesInTex = coord.size() * sizeof(float);
+	glBufferData(GL_ARRAY_BUFFER, numBytesInPositions + numBytesInTex, nullptr, GL_STATIC_DRAW);
+	// Next, write the position and color data into the VBO.
+	glBufferSubData(GL_ARRAY_BUFFER, 0, numBytesInPositions, pos.data()); // The VBO starts with positions.
+	glBufferSubData(GL_ARRAY_BUFFER, numBytesInPositions, numBytesInTex, coord.data()); // The colors are written after the positions.
+	// Create the VAOs. There is a single VAO in this example.
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+	// Set up the relationship between the "position" shader variable and the VAO.
+	const GLuint locationOfPosition = glGetAttribLocation(groundPipelineProgram->GetProgramHandle(), "position"); // Obtain a handle to the shader variable "position".
+	glEnableVertexAttribArray(locationOfPosition); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfPosition, 3, GL_FLOAT, normalized, stride, (const void*)0); // The shader variable "position" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset 0 in the VBO. There are 3 float entries per vertex in the VBO (i.e., x,y,z coordinates). 
+	// Set up the relationship between the "color" shader variable and the VAO.
+	const GLuint locationOfTex = glGetAttribLocation(groundPipelineProgram->GetProgramHandle(), "texCoord"); // Obtain a handle to the shader variable "color".
+	glEnableVertexAttribArray(locationOfTex); // Must always enable the vertex attribute. By default, it is disabled.
+	glVertexAttribPointer(locationOfTex, 2, GL_FLOAT, normalized, stride, (const void*)(unsigned long)numBytesInPositions); // The shader variable "color" receives its data from the currently bound VBO (i.e., vertexPositionAndColorVBO), starting from offset "numBytesInPositions" in the VBO. There are 4 float entries per vertex in the VBO (i.e., r,g,b,a channels). 
+	glBindVertexArray(0); // unbind the VAO
+
+}
+
+void initGroundPlane()
+{
+	glm::vec3 v0 = glm::vec3(0.0f, 0.0f, -0.5f);
+	glm::vec3 v1 = glm::vec3(100.0f, 0.0f, -0.5f);
+	glm::vec3 v2 = glm::vec3(0.0f, 100.0f, -0.5f);
+	glm::vec3 v3 = glm::vec3(100.0f, 100.0f, -0.5f);
+	insertPointPos(groundPos, v0);
+	insertPointPos(groundPos, v1);
+	insertPointPos(groundPos, v2);
+	insertPointPos(groundPos, v3);
+	insertPointPos(groundPos, v1);
+	insertPointPos(groundPos, v2);
+	texCoord.push_back(0.0f);
+	texCoord.push_back(0.0f);
+	texCoord.push_back(1024.0f);
+	texCoord.push_back(0.0f);
+	texCoord.push_back(0.0f);
+	texCoord.push_back(1024.0f);
+	texCoord.push_back(1024.0f);
+	texCoord.push_back(1024.0f);
+	texCoord.push_back(1024.0f);
+	texCoord.push_back(0.0f);
+	texCoord.push_back(0.0f);
+	texCoord.push_back(1024.0f);
+
+}
 // initialize the scene
+int initTexture(const char* imageFilename, GLuint textureHandle)
+{
+	// read the texture image
+	ImageIO img;
+	ImageIO::fileFormatType imgFormat;
+	ImageIO::errorType err = img.load(imageFilename, &imgFormat);
+
+	if (err != ImageIO::OK)
+	{
+		printf("Loading texture from %s failed.\n", imageFilename);
+		return -1;
+	}
+
+	// check that the number of bytes is a multiple of 4
+	if (img.getWidth() * img.getBytesPerPixel() % 4)
+	{
+		printf("Error (%s): The width*numChannels in the loaded image must be a multiple of 4.\n", imageFilename);
+		return -1;
+	}
+
+	// allocate space for an array of pixels
+	int width = img.getWidth();
+	int height = img.getHeight();
+	unsigned char* pixelsRGBA = new unsigned char[4 * width * height]; // we will use 4 bytes per pixel, i.e., RGBA
+
+	// fill the pixelsRGBA array with the image pixels
+	memset(pixelsRGBA, 0, 4 * width * height); // set all bytes to 0
+	for (int h = 0; h < height; h++)
+		for (int w = 0; w < width; w++)
+		{
+			// assign some default byte values (for the case where img.getBytesPerPixel() < 4)
+			pixelsRGBA[4 * (h * width + w) + 0] = 0; // red
+			pixelsRGBA[4 * (h * width + w) + 1] = 0; // green
+			pixelsRGBA[4 * (h * width + w) + 2] = 0; // blue
+			pixelsRGBA[4 * (h * width + w) + 3] = 255; // alpha channel; fully opaque
+
+			// set the RGBA channels, based on the loaded image
+			int numChannels = img.getBytesPerPixel();
+			for (int c = 0; c < numChannels; c++) // only set as many channels as are available in the loaded image; the rest get the default value
+				pixelsRGBA[4 * (h * width + w) + c] = img.getPixel(w, h, c);
+		}
+
+	// bind the texture
+	glBindTexture(GL_TEXTURE_2D, textureHandle);
+
+	// initialize the texture
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsRGBA);
+
+	// generate the mipmaps for this texture
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	// set the texture parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	// query support for anisotropic texture filtering
+	GLfloat fLargest;
+	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &fLargest);
+	printf("Max available anisotropic samples: %f\n", fLargest);
+	// set anisotropic texture filtering
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 0.5f * fLargest);
+
+	// query for any errors
+	GLenum errCode = glGetError();
+	printf("Error code: %d.\n", errCode);
+	if (errCode != 0)
+	{
+		printf("Texture initialization error. Error code: %d.\n", errCode);
+		return -1;
+	}
+
+	// de-allocate the pixel array -- it is no longer needed
+	delete[] pixelsRGBA;
+	printf("Success\n");
+	return 0;
+}
+
+void setTextureUnit(GLint unit)
+{
+	glActiveTexture(unit); // select texture unit affected by subsequent texture calls
+	// get a handle to the “textureImage” shader variable
+	GLint h_textureImage = glGetUniformLocation(groundPipelineProgram->GetProgramHandle(), "textureImage");
+	// deem the shader variable “textureImage” to read from texture unit “unit”
+	glUniform1i(h_textureImage, unit - GL_TEXTURE0);
+}
+
 void initScene(int argc, char* argv[])
 {
 
 	// Set the background color.
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Black color.
+	glClearColor(0.8f, 0.9f, 1.0f, 1.0f); // Black color.
 
 	// Enable z-buffering (i.e., hidden surface removal using the z-buffer algorithm).
 	glEnable(GL_DEPTH_TEST);
@@ -421,13 +569,14 @@ void initScene(int argc, char* argv[])
 	// Create and bind the pipeline program. This operation must be performed BEFORE we initialize any VAOs.
 	pipelineProgram = new BasicPipelineProgram;
 	int ret = pipelineProgram->Init(shaderBasePath);
-	if (ret != 0)
+	groundPipelineProgram = new GroundPipelineProgram;
+	int groundRet = groundPipelineProgram->Init(shaderBasePath);
+	if (ret != 0 || groundRet != 0)
 	{
 		abort();
 	}
+	// railway pipeline
 	pipelineProgram->Bind();
-
-	// init the splines
 	for (int i = 0; i < numSplines; i++)
 	{
 		initSplines(splines[i]);
@@ -438,6 +587,19 @@ void initScene(int argc, char* argv[])
 	}
 	sloanIndex = 0;
 	initVBOsMode(curveVBO, curveVAO, curvePos, curveCol);
+
+	// ground pipeline
+	// create an integer handle for the texture
+	glGenTextures(1, &texHandle);
+	int texRet = initTexture("ice.jpg", texHandle);
+	if (texRet != 0)
+	{
+		printf("Error loading the texture image. %d\n", texHandle);
+		exit(EXIT_FAILURE);
+	}
+	groundPipelineProgram->Bind();
+	initGroundPlane();
+	initTextureVBO(groundVBO, groundVAO, groundPos, texCoord);
 
 	// Check for any OpenGL errors.
 	std::cout << "GL error: " << glGetError() << std::endl;
@@ -461,10 +623,10 @@ void displayFunc()
 			camTransition[sloanIndex]->t.x + camTransition[sloanIndex]->p.x,
 			camTransition[sloanIndex]->t.y + camTransition[sloanIndex]->p.y,
 			camTransition[sloanIndex]->t.z + camTransition[sloanIndex]->p.z,
-			camTransition[sloanIndex]->n.x,
-			camTransition[sloanIndex]->n.y,
-			camTransition[sloanIndex]->n.z);
-		sloanIndex++;
+			-camTransition[sloanIndex]->b.x,
+			-camTransition[sloanIndex]->b.y,
+			-camTransition[sloanIndex]->b.z);
+		sloanIndex += 1;
 	}
 	else
 	{
@@ -540,7 +702,7 @@ void displayFunc()
 	GLint h_Ls = glGetUniformLocation(program, "Ls");
 	glUniform4fv(h_Ls, 1, light);
 
-	float ka[4] = { 0.2f, 0.2f, 0.2f, 0.2f };
+	float ka[4] = { 0.4f, 0.4f, 0.4f, 0.4f };
 	GLint h_Ka = glGetUniformLocation(program, "ka");
 	glUniform4fv(h_Ka, 1, ka);
 
@@ -553,17 +715,30 @@ void displayFunc()
 	glUniform4fv(h_Ks, 1, ks);
 
 	GLint h_alpha = glGetUniformLocation(program, "alpha");
-	glUniform1f(h_alpha, 0.5f);
+	glUniform1f(h_alpha, 0.95f);
 
-	// render
+	// render the solid railway
 	glBindVertexArray(curveVAO);
 	glDrawArrays(GL_TRIANGLES, 0, curvePos.size() / 3);
+	glBindVertexArray(0); // unbind the VAO
+
+	// ground pipeline program
+	groundPipelineProgram->Bind();
+	groundPipelineProgram->SetModelViewMatrix(modelViewMatrix);
+	groundPipelineProgram->SetProjectionMatrix(projectionMatrix);
+	// select the active texture unit
+	setTextureUnit(GL_TEXTURE0); // it is safe to always use GL_TEXTURE0
+	// select the texture to use (“texHandle” was generated by glGenTextures)
+	glBindTexture(GL_TEXTURE_2D, texHandle);
+
+	// render the ground
+	glBindVertexArray(groundVAO);
+	glDrawArrays(GL_TRIANGLES, 0, groundPos.size() / 3);
 	glBindVertexArray(0); // unbind the VAO
 
 	// Swap the double-buffers.
 	glutSwapBuffers();
 }
-
 
 void idleFunc()
 {
@@ -734,82 +909,6 @@ void keyboardFunc(unsigned char key, int x, int y)
 	}
 }
 
-int initTexture(const char* imageFilename, GLuint textureHandle)
-{
-	// read the texture image
-	ImageIO img;
-	ImageIO::fileFormatType imgFormat;
-	ImageIO::errorType err = img.load(imageFilename, &imgFormat);
-
-	if (err != ImageIO::OK)
-	{
-		printf("Loading texture from %s failed.\n", imageFilename);
-		return -1;
-	}
-
-	// check that the number of bytes is a multiple of 4
-	if (img.getWidth() * img.getBytesPerPixel() % 4)
-	{
-		printf("Error (%s): The width*numChannels in the loaded image must be a multiple of 4.\n", imageFilename);
-		return -1;
-	}
-
-	// allocate space for an array of pixels
-	int width = img.getWidth();
-	int height = img.getHeight();
-	unsigned char* pixelsRGBA = new unsigned char[4 * width * height]; // we will use 4 bytes per pixel, i.e., RGBA
-
-	// fill the pixelsRGBA array with the image pixels
-	memset(pixelsRGBA, 0, 4 * width * height); // set all bytes to 0
-	for (int h = 0; h < height; h++)
-		for (int w = 0; w < width; w++)
-		{
-			// assign some default byte values (for the case where img.getBytesPerPixel() < 4)
-			pixelsRGBA[4 * (h * width + w) + 0] = 0; // red
-			pixelsRGBA[4 * (h * width + w) + 1] = 0; // green
-			pixelsRGBA[4 * (h * width + w) + 2] = 0; // blue
-			pixelsRGBA[4 * (h * width + w) + 3] = 255; // alpha channel; fully opaque
-
-			// set the RGBA channels, based on the loaded image
-			int numChannels = img.getBytesPerPixel();
-			for (int c = 0; c < numChannels; c++) // only set as many channels as are available in the loaded image; the rest get the default value
-				pixelsRGBA[4 * (h * width + w) + c] = img.getPixel(w, h, c);
-		}
-
-	// bind the texture
-	glBindTexture(GL_TEXTURE_2D, textureHandle);
-
-	// initialize the texture
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelsRGBA);
-
-	// generate the mipmaps for this texture
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	// set the texture parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// query support for anisotropic texture filtering
-	GLfloat fLargest;
-	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &fLargest);
-	printf("Max available anisotropic samples: %f\n", fLargest);
-	// set anisotropic texture filtering
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 0.5f * fLargest);
-
-	// query for any errors
-	GLenum errCode = glGetError();
-	if (errCode != 0)
-	{
-		printf("Texture initialization error. Error code: %d.\n", errCode);
-		return -1;
-	}
-
-	// de-allocate the pixel array -- it is no longer needed
-	delete[] pixelsRGBA;
-
-	return 0;
-}
 
 // Note: You should combine this file
 // with the solution of homework 1.C:\Users\alass\Graphics-Programming\assign2\hw2-starterCode\splines
