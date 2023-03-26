@@ -494,7 +494,68 @@ void displayFunc()
 	// Upload the modelview and projection matrices to the GPU.
 	pipelineProgram->SetModelViewMatrix(modelViewMatrix);
 	pipelineProgram->SetProjectionMatrix(projectionMatrix);
+	GLuint program = pipelineProgram->GetProgramHandle();
 
+	// upload light direction
+	GLint h_viewLightDirection = glGetUniformLocation(program, "viewLightDirection");
+	glm::mat4 viewMat = glm::mat4(
+		modelViewMatrix[0],
+		modelViewMatrix[1],
+		modelViewMatrix[2],
+		modelViewMatrix[3],
+		modelViewMatrix[4],
+		modelViewMatrix[5],
+		modelViewMatrix[6],
+		modelViewMatrix[7],
+		modelViewMatrix[8],
+		modelViewMatrix[9],
+		modelViewMatrix[10],
+		modelViewMatrix[11],
+		modelViewMatrix[12],
+		modelViewMatrix[13],
+		modelViewMatrix[14],
+		modelViewMatrix[15]
+	);
+	float viewLightDirection[3];
+	glm::vec4 dir = viewMat * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+	viewLightDirection[0] = dir.x;
+	viewLightDirection[1] = dir.y;
+	viewLightDirection[2] = dir.z;
+	glUniform3fv(h_viewLightDirection, 1, viewLightDirection);
+
+	// upload normal matrix
+	GLint h_normalMatrix = glGetUniformLocation(program, "normalMatrix");
+	float n[16];
+	matrix.SetMatrixMode(OpenGLMatrix::ModelView);
+	matrix.GetNormalMatrix(n);
+	GLboolean isRowMajor = GL_FALSE;
+	glUniformMatrix4fv(h_normalMatrix, 1, isRowMajor, n);
+
+	// setting coefficients
+	float light[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	GLint h_La = glGetUniformLocation(program, "La");
+	glUniform4fv(h_La, 1, light);
+	GLint h_Ld = glGetUniformLocation(program, "Ld");
+	glUniform4fv(h_Ld, 1, light);
+	GLint h_Ls = glGetUniformLocation(program, "Ls");
+	glUniform4fv(h_Ls, 1, light);
+
+	float ka[4] = { 0.2f, 0.2f, 0.2f, 0.2f };
+	GLint h_Ka = glGetUniformLocation(program, "ka");
+	glUniform4fv(h_Ka, 1, ka);
+
+	float kd[4] = { 0.3f, 0.3f, 0.3f, 0.3f };
+	GLint h_Kd = glGetUniformLocation(program, "kd");
+	glUniform4fv(h_Kd, 1, kd);
+
+	float ks[4] = { 0.3f, 0.3f, 0.3f, 0.3f };
+	GLint h_Ks = glGetUniformLocation(program, "ks");
+	glUniform4fv(h_Ks, 1, ks);
+
+	GLint h_alpha = glGetUniformLocation(program, "alpha");
+	glUniform1f(h_alpha, 0.5f);
+
+	// render
 	glBindVertexArray(curveVAO);
 	glDrawArrays(GL_TRIANGLES, 0, curvePos.size() / 3);
 	glBindVertexArray(0); // unbind the VAO
