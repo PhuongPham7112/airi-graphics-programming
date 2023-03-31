@@ -68,6 +68,7 @@ int imageWidth;
 int imageHeight;
 float scale = 0.002f;
 float maxHeight = -INFINITY;
+float maxLineLength = 0.01f;
 
 // Stores the image loaded from disk.
 ImageIO* groundImage;
@@ -115,6 +116,7 @@ std::vector<SloanPoint*> camTransition; // track the coordinate system of each p
 std::vector<float> curvePos;
 std::vector<float> curveCol;
 std::vector<SloanPoint*> crossRail;
+std::vector<SloanPoint*> tRail;
 GLuint curveVBO;
 GLuint curveVAO;
 
@@ -202,17 +204,126 @@ void initCameraMove(Spline spl)
 			// update max height
 			// modify for realistic gravity
 			glm::vec3 unnormTang = glm::vec4(3.0f * pow(u, 2), 2.0f * u, 1.0f, 0.0f) * basisMat * controlMat;
-			uStep = 0.0016f * sqrt(2.0f * 9.8f * (maxHeight - sl->p.z)) / (glm::length(unnormTang));
+			float h = (maxHeight - sl->p.z > 0.0f) ? (maxHeight - sl->p.z) : 0.0f;
+			uStep = 0.0016f * sqrt(2.0f * 9.8f * h) / (glm::length(unnormTang));
 			u += uStep;
 		}
+	}
+}
+
+void drawQuad(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3,
+	glm::vec3 p4, glm::vec3 p5, glm::vec3 p6,
+	glm::vec3 c1, glm::vec3 c2, glm::vec3 c3,
+	glm::vec3 c4, glm::vec3 c5, glm::vec3 c6)
+{
+	insertPointPos(curvePos, p1);
+	insertPointPos(curvePos, p2);
+	insertPointPos(curvePos, p3);
+	insertPointPos(curvePos, p4);
+	insertPointPos(curvePos, p5);
+	insertPointPos(curvePos, p6);
+	insertPointCol(curveCol, c1);
+	insertPointCol(curveCol, c2);
+	insertPointCol(curveCol, c3);
+	insertPointCol(curveCol, c4);
+	insertPointCol(curveCol, c5);
+	insertPointCol(curveCol, c6);
+}
+
+void drawLine(float u0, float u1, glm::mat4& basisMat, glm::mat3x4& controlMat)
+{
+	// main rail part
+	float alpha = 0.05f;
+	float beta = 0.025f;
+	SloanPoint* sl1 = initSloanPoint(basisMat, controlMat, u0, crossRail);
+	SloanPoint* sl3 = initSloanPoint(basisMat, controlMat, u0, crossRail);
+	glm::vec3 v0 = sl1->p + alpha * -sl1->n + beta * sl1->b;
+	glm::vec3 v1 = sl1->p + alpha * sl1->n + beta * sl1->b;
+	glm::vec3 v2 = sl1->p + alpha * sl1->n - beta * sl1->b;
+	glm::vec3 v3 = sl1->p + alpha * -sl1->n - beta * sl1->b;
+
+	crossRail.push_back(sl1);
+
+	SloanPoint* sl2 = initSloanPoint(basisMat, controlMat, u1, crossRail);
+	SloanPoint* sl4 = initSloanPoint(basisMat, controlMat, u1, crossRail);
+	glm::vec3 v4 = sl2->p + alpha * -sl2->n + beta * sl2->b;
+	glm::vec3 v5 = sl2->p + alpha * sl2->n + beta * sl2->b;
+	glm::vec3 v6 = sl2->p + alpha * sl2->n - beta * sl2->b;
+	glm::vec3 v7 = sl2->p + alpha * -sl2->n - beta * sl2->b;
+
+	// t-rail part
+	glm::vec3 norm3 = sl3->n;
+	glm::vec3 binorm3 = sl3->b;
+	sl3->p -= beta * 2.0f * norm3 + alpha * 0.5f * binorm3;
+	sl3->n -= beta * 2.0f * norm3 + alpha * 0.5f * binorm3;
+	sl3->b -= beta * 2.0f * norm3 + alpha * 0.5f * binorm3;
+	glm::vec3 v8 = sl3->p + beta * -sl3->n + alpha * sl3->b;
+	glm::vec3 v9 = sl3->p + beta * sl3->n + alpha * sl3->b;
+	glm::vec3 v10 = sl3->p + beta * sl3->n - alpha * sl3->b;
+	glm::vec3 v11 = sl3->p + beta * -sl3->n - alpha * sl3->b;
+
+	glm::vec3 norm4 = sl4->n;
+	glm::vec3 binorm4 = sl4->b;
+	sl4->p -= beta * 2.0f * norm4 + alpha * 0.5f * binorm4;
+	sl4->b -= beta * 2.0f * norm4 + alpha * 0.5f * binorm4;
+	sl4->n -= beta * 2.0f * norm4 + alpha * 0.5f * binorm4;
+	glm::vec3 v12 = sl4->p + beta * -sl4->n + alpha * sl4->b;
+	glm::vec3 v13 = sl4->p + beta * sl4->n + alpha * sl4->b;
+	glm::vec3 v14 = sl4->p + beta * sl4->n - alpha * sl4->b;
+	glm::vec3 v15 = sl4->p + beta * -sl4->n - alpha * sl4->b;
+
+	// top
+	drawQuad(v1, v5, v2, v6, v5, v2,
+		-sl1->n, -sl2->n, -sl1->n, -sl2->n, -sl2->n, -sl1->n);
+	drawQuad(v8, v12, v9, v13, v12, v9,
+		-sl3->n, -sl4->n, -sl3->n, -sl4->n, -sl4->n, -sl3->n);
+	// right
+	drawQuad(v1, v5, v0, v4, v5, v0,
+		sl1->b, sl2->b, sl1->b, sl2->b, sl2->b, sl1->b);
+	drawQuad(v8, v12, v7, v11, v12, v7,
+		sl3->b, sl4->b, sl3->b, sl4->b, sl4->b, sl3->b);
+	// left
+	drawQuad(v2, v6, v3, v7, v6, v3,
+		-sl1->b, -sl2->b, -sl1->b, -sl2->b, -sl2->b, -sl1->b);
+	drawQuad(v9, v13, v10, v14, v13, v10,
+		-sl3->b, -sl4->b, -sl3->b, -sl4->b, -sl4->b, -sl3->b);
+	// bottom
+	drawQuad(v0, v4, v3, v7, v4, v3,
+		sl1->n, sl2->n, sl1->n, sl2->n, sl2->n, sl1->n);
+	drawQuad(v7, v11, v10, v10, v11, v10,
+		sl3->n, sl4->n, sl3->n, sl4->n, sl4->n, sl3->n);
+
+	// find max height
+	if (sl1->p.z > maxHeight)
+	{
+		maxHeight = sl1->p.z;
+	}
+}
+
+void drawTRail(float u0, float u1, glm::mat4& basisMat, glm::mat3x4& controlMat)
+{}
+
+void subdivide(float u0, float u1, glm::mat4& basisMat, glm::mat3x4& controlMat)
+{
+	float umid = (u0 + u1) / 2.0f;
+	glm::vec3 x0 = glm::vec4(pow(u0, 3), pow(u0, 2), u0, 1) * basisMat * controlMat;
+	glm::vec3 x1 = glm::vec4(pow(u1, 3), pow(u1, 2), u1, 1) * basisMat * controlMat;
+	if (glm::length(x1 - x0) > maxLineLength)
+	{
+		subdivide(u0, umid, basisMat, controlMat);
+		subdivide(umid, u1, basisMat, controlMat);
+	}
+	else
+	{
+		drawLine(u0, u1, basisMat, controlMat);
 	}
 }
 
 void initSplines(Spline spl)
 {
 	float uStep = 0.001f;
-	float s = 0.5f;
 	float alpha = 0.05f;
+	float s = 0.5f;
 
 	glm::mat4 basisMat = glm::mat4(
 		-s, 2.0f * s, -s, 0.0f,
@@ -227,91 +338,7 @@ void initSplines(Spline spl)
 			spl.points[i - 1].x, spl.points[i].x, spl.points[i + 1].x, spl.points[i + 2].x,
 			spl.points[i - 1].y, spl.points[i].y, spl.points[i + 1].y, spl.points[i + 2].y,
 			spl.points[i - 1].z, spl.points[i].z, spl.points[i + 1].z, spl.points[i + 2].z);
-
-		// initial arbitrary vector
-		glm::vec3 v = glm::vec3(0.0f, 0.0f, 5.0f);
-
-		while (u < 1.0f)
-		{
-			glm::vec3 white = glm::vec3(1.0f, 1.0f, 1.0f);
-			SloanPoint* sl1 = initSloanPoint(basisMat, controlMat, u, crossRail);
-			glm::vec3 v0 = sl1->p + alpha * (-sl1->n + sl1->b);
-			glm::vec3 v1 = sl1->p + alpha * (sl1->n + sl1->b);
-			glm::vec3 v2 = sl1->p + alpha * (sl1->n - sl1->b);
-			glm::vec3 v3 = sl1->p + alpha * (-sl1->n - sl1->b);
-
-			crossRail.push_back(sl1);
-
-			SloanPoint* sl2 = initSloanPoint(basisMat, controlMat, u + uStep, crossRail);
-			glm::vec3 v4 = sl2->p + alpha * (-sl2->n + sl2->b);
-			glm::vec3 v5 = sl2->p + alpha * (sl2->n + sl2->b);
-			glm::vec3 v6 = sl2->p + alpha * (sl2->n - sl2->b);
-			glm::vec3 v7 = sl2->p + alpha * (-sl2->n - sl2->b);
-
-			// top
-			insertPointPos(curvePos, v1);
-			insertPointPos(curvePos, v5);
-			insertPointPos(curvePos, v2);
-			insertPointPos(curvePos, v6);
-			insertPointPos(curvePos, v5);
-			insertPointPos(curvePos, v2);
-			insertPointCol(curveCol, -sl1->n);
-			insertPointCol(curveCol, -sl2->n);
-			insertPointCol(curveCol, -sl1->n);
-			insertPointCol(curveCol, -sl2->n);
-			insertPointCol(curveCol, -sl2->n);
-			insertPointCol(curveCol, -sl1->n);
-
-			// right
-			insertPointPos(curvePos, v1);
-			insertPointPos(curvePos, v5);
-			insertPointPos(curvePos, v0);
-			insertPointPos(curvePos, v4);
-			insertPointPos(curvePos, v5);
-			insertPointPos(curvePos, v0);
-			insertPointCol(curveCol, -sl1->b);
-			insertPointCol(curveCol, -sl2->b);
-			insertPointCol(curveCol, -sl1->b);
-			insertPointCol(curveCol, -sl2->b);
-			insertPointCol(curveCol, -sl2->b);
-			insertPointCol(curveCol, -sl1->b);
-
-			// left
-			insertPointPos(curvePos, v2);
-			insertPointPos(curvePos, v6);
-			insertPointPos(curvePos, v3);
-			insertPointPos(curvePos, v7);
-			insertPointPos(curvePos, v6);
-			insertPointPos(curvePos, v3);
-			insertPointCol(curveCol, sl1->b);
-			insertPointCol(curveCol, sl2->b);
-			insertPointCol(curveCol, sl1->b);
-			insertPointCol(curveCol, sl2->b);
-			insertPointCol(curveCol, sl2->b);
-			insertPointCol(curveCol, sl1->b);
-
-			// bottom
-			insertPointPos(curvePos, v0);
-			insertPointPos(curvePos, v4);
-			insertPointPos(curvePos, v3);
-			insertPointPos(curvePos, v7);
-			insertPointPos(curvePos, v4);
-			insertPointPos(curvePos, v3);
-			insertPointCol(curveCol, sl1->n);
-			insertPointCol(curveCol, sl2->n);
-			insertPointCol(curveCol, sl1->n);
-			insertPointCol(curveCol, sl2->n);
-			insertPointCol(curveCol, sl2->n);
-			insertPointCol(curveCol, sl1->n);
-
-			// find max height
-			if (sl1->p.z > maxHeight)
-			{
-				maxHeight = sl1->p.z;
-			}
-
-			u += uStep;
-		}
+		subdivide(0.0f, 1.0f, basisMat, controlMat);
 	}
 }
 
@@ -445,8 +472,8 @@ void initTextureVBO(GLuint& vbo, GLuint& vao, std::vector<float>& pos, std::vect
 
 void initGroundPlane()
 {
-	glm::vec3 v0 = glm::vec3(0.0f, 0.0f, -0.5f);
-	glm::vec3 v1 = glm::vec3(100.0f, 0.0f, -0.5f);
+	glm::vec3 v0 = glm::vec3(0.0f, -100.0f, -0.5f);
+	glm::vec3 v1 = glm::vec3(100.0f, -100.0f, -0.5f);
 	glm::vec3 v2 = glm::vec3(0.0f, 100.0f, -0.5f);
 	glm::vec3 v3 = glm::vec3(100.0f, 100.0f, -0.5f);
 	insertPointPos(groundPos, v0);
@@ -457,16 +484,16 @@ void initGroundPlane()
 	insertPointPos(groundPos, v2);
 	texCoord.push_back(0.0f);
 	texCoord.push_back(0.0f);
-	texCoord.push_back(1024.0f);
+	texCoord.push_back(0.5f);
 	texCoord.push_back(0.0f);
 	texCoord.push_back(0.0f);
-	texCoord.push_back(1024.0f);
-	texCoord.push_back(1024.0f);
-	texCoord.push_back(1024.0f);
-	texCoord.push_back(1024.0f);
+	texCoord.push_back(0.5f);
+	texCoord.push_back(0.5f);
+	texCoord.push_back(0.5f);
+	texCoord.push_back(0.5f);
 	texCoord.push_back(0.0f);
 	texCoord.push_back(0.0f);
-	texCoord.push_back(1024.0f);
+	texCoord.push_back(0.5f);
 
 }
 // initialize the scene
