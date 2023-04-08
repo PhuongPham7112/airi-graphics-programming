@@ -771,6 +771,12 @@ void idleFunc()
 {
 	// Do some stuff... 
 	// For example, here, you can save the screenshots to disk (to make the animation).
+	std::string folder = "./animation/";
+	if (frameNum < 1000)
+	{
+		saveScreenshot((folder + "frame_" + std::to_string(frameNum) + ".jpeg").c_str());
+		frameNum++;
+	}
 
 	// Send the signal that we should call displayFunc.
 	glutPostRedisplay();
