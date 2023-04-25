@@ -105,7 +105,7 @@ void plot_pixel_display(int x, int y, unsigned char r, unsigned char g, unsigned
 void plot_pixel_jpeg(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 void plot_pixel(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 
-bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, double& v)
+bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, double& v, double& w)
 {
 	// get intersection
 	// test point inside triangle: project 3D to 2D and use baycentric coordinate in 2D
@@ -118,58 +118,25 @@ bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, dou
 		glm::dvec3 pos_b = (tri.v[1].position);
 		glm::dvec3 pos_c = (tri.v[2].position);
 		glm::dvec3 ab = pos_b - pos_a;
-		glm::dvec3 bc = pos_c - pos_b;
-		glm::dvec3 ca = pos_a - pos_c;
-		glm::dvec3 normal = glm::normalize(glm::cross(ab, ca));
-		double check_paral = glm::dot(normal, ray.dir);
-		if (abs(check_paral) < eps) // ray parallel to plane
-		{
-			//std::cout << "Parallel with ray" << std::endl;
-			continue;
-		}
-		// find intersectional point
-		double coeff_d = -glm::dot(normal, pos_a);
-		double t = -(glm::dot(normal, ray.src) + coeff_d) / (check_paral);
-		if (t < eps)
-		{
-			// std::cout << "Too small dist : " << t << std::endl;
-			continue;
-		}
-		glm::dvec3 intersect = ray.src + ray.dir * t;
+		glm::dvec3 ac = pos_c - pos_a;
+		glm::dvec3 plane = glm::cross(ray.dir, ac);
+		double det = glm::dot(ab, plane);
 
-		// test inside-outside test: barycentric interpolation
-		glm::dvec3 xy_plane = glm::dvec3(1.0, 1.0, 0.0);
-		glm::dvec3 yz_plane = glm::dvec3(0.0, 1.0, 1.0);
-		glm::dvec3 zx_plane = glm::dvec3(1.0, 0.0, 1.0);
-		double proj_xy = glm::dot(xy_plane, normal);
-		double tri_area, pbc_area, pca_area, pab_area;
-		if (glm::dot(xy_plane, normal) != 0.0) // project on xy plane
-		{
-			tri_area = 0.5 * ((pos_b.x - pos_a.x) * (pos_c.y - pos_a.y) - (pos_c.x - pos_a.x) * (pos_b.y - pos_a.y));
-			pbc_area = 0.5 * ((pos_b.x - intersect.x) * (pos_c.y - intersect.y) - (pos_c.x - intersect.x) * (pos_b.y - intersect.y));
-			pca_area = 0.5 * ((pos_a.x - intersect.x) * (pos_c.y - intersect.y) - (pos_c.x - intersect.x) * (pos_a.y - intersect.y));
-			pab_area = 0.5 * ((pos_b.x - intersect.x) * (pos_a.y - intersect.y) - (pos_a.x - intersect.x) * (pos_b.y - intersect.y));
-		}
-		else if (glm::dot(yz_plane, normal) != 0.0) // project on yz plane
-		{
-			tri_area = 0.5 * ((pos_b.y - pos_a.y) * (pos_c.z - pos_a.z) - (pos_c.y - pos_a.y) * (pos_b.z - pos_a.z));
-			pbc_area = 0.5 * ((pos_b.y - intersect.y) * (pos_c.z - intersect.z) - (pos_c.y - intersect.y) * (pos_b.z - intersect.z));
-			pca_area = 0.5 * ((pos_a.y - intersect.y) * (pos_c.z - intersect.z) - (pos_c.y - intersect.y) * (pos_a.z - intersect.z));
-			pab_area = 0.5 * ((pos_b.y - intersect.y) * (pos_a.z - intersect.z) - (pos_a.y - intersect.y) * (pos_b.z - intersect.z));
-		}
-		else if (glm::dot(zx_plane, normal) != 0.0) // project on zx plane
-		{
-			tri_area = 0.5 * ((pos_b.z - pos_a.z) * (pos_c.x - pos_a.x) - (pos_c.z - pos_a.z) * (pos_b.x - pos_a.x));
-			pbc_area = 0.5 * ((pos_b.z - intersect.z) * (pos_c.x - intersect.x) - (pos_c.z - intersect.z) * (pos_b.x - intersect.x));
-			pca_area = 0.5 * ((pos_a.z - intersect.z) * (pos_c.x - intersect.x) - (pos_c.z - intersect.z) * (pos_a.x - intersect.x));
-			pab_area = 0.5 * ((pos_b.z - intersect.z) * (pos_a.x - intersect.x) - (pos_a.z - intersect.z) * (pos_b.x - intersect.x));
-		}
-		if (tri_area < eps)
-			continue;
+		if (det < eps) continue;
 
-		double alpha = pbc_area / tri_area;
-		double beta = pca_area / tri_area;
-		double gamma = pab_area / tri_area;
+		double inverse_det = 1.0 / det;
+		glm::dvec3 t_vec = ray.src - pos_a;
+		double alpha = inverse_det * glm::dot(t_vec, plane);
+		if (alpha < 0.0 || alpha > 1.0) continue;
+
+		glm::dvec3 q_vec = glm::cross(t_vec, ab);
+		double beta = inverse_det * glm::dot(ray.dir, q_vec);
+		if (beta < 0.0 || beta > 1.0) continue;
+
+		double gamma = 1.0 - alpha - beta;
+		if (gamma < 0.0 || gamma > 1.0) continue;
+
+		double t = inverse_det * glm::dot(ac, q_vec);
 
 		// outside of triangle
 		if (alpha < 0.0 || beta < 0.0 || gamma < 0.0) continue; // outside of triangle
@@ -179,6 +146,7 @@ bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, dou
 			tri_idx = i;
 			u = alpha;
 			v = beta;
+			w = gamma;
 		}
 	}
 	return tri_idx > -1;
@@ -225,32 +193,32 @@ glm::dvec3 calc_phong(const Vertex& hit_point, const Light& light)
 
 bool is_in_shadow(const Light& light, const Vertex& hit_point)
 {
-	double hit_dist_sph, hit_dist_tri, u, v;
+	double hit_dist_sph, hit_dist_tri, u, v, w;
 	int sph_idx, tri_idx;
 	glm::dvec3 light_pos = (light.position);
 	glm::dvec3 hit_pos = (hit_point.position);
 	glm::dvec3 shadow_dir = glm::normalize(light_pos - hit_pos);
 	Ray shadow_ray = { hit_pos, shadow_dir };
-	bool hit_triangle = intersect_triangle(shadow_ray, hit_dist_tri, tri_idx, u, v);
+	bool hit_triangle = intersect_triangle(shadow_ray, hit_dist_tri, tri_idx, u, v, w);
 	bool hit_sphere = intersect_sphere(shadow_ray, hit_dist_sph, sph_idx);
 	// if not in shadow
 	if (!hit_triangle && !hit_sphere)
 	{
 		return false;
 	}
-	// if in shadow
-	glm::dvec3 shadow_hit_pos;
-	if ((hit_sphere && !hit_triangle)
-		|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri))
-	{
-		shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_sph;
-	}
-	else
-	{
-		shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_tri;
-	}
-	if (glm::dot(hit_pos - shadow_hit_pos, hit_pos - shadow_hit_pos) - glm::dot(hit_pos - light_pos, hit_pos - light_pos) > eps)
-		return false;
+	//// if in shadow
+	//glm::dvec3 shadow_hit_pos;
+	//if ((hit_sphere && !hit_triangle)
+	//	|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri))
+	//{
+	//	shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_sph;
+	//}
+	//else
+	//{
+	//	shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_tri;
+	//}
+	//if (glm::dot(hit_pos - shadow_hit_pos, hit_pos - shadow_hit_pos) - glm::dot(hit_pos - light_pos, hit_pos - light_pos) > eps)
+	//	return false;
 	return true;
 }
 
@@ -258,9 +226,9 @@ glm::dvec3 calc_color(Ray& ray)
 {
 	double hit_dist_sph, hit_dist_tri;
 	int sph_idx, tri_idx;
-	double u, v;
+	double u, v, w;
 	bool hit_sphere = intersect_sphere(ray, hit_dist_sph, sph_idx);
-	bool hit_triangle = intersect_triangle(ray, hit_dist_tri, tri_idx, u, v);
+	bool hit_triangle = intersect_triangle(ray, hit_dist_tri, tri_idx, u, v, w);
 	Vertex hit;
 	Sphere intersected_sph;
 	Triangle intersected_tri;
@@ -287,9 +255,9 @@ glm::dvec3 calc_color(Ray& ray)
 		Vertex point_c = intersected_tri.v[2];
 		hit.position = ray.src + ray.dir * hit_dist_tri;
 		hit.normal = glm::normalize(point_a.normal * u + point_b.normal * v + point_c.normal * (1.0 - u - v));
-		hit.color_diffuse = point_a.color_diffuse * u + point_b.color_diffuse * v + point_c.color_diffuse * (1.0 - u - v);
-		hit.color_specular = point_a.color_specular * u + point_b.color_specular * v + point_c.color_specular * (1.0 - u - v);
-		hit.shininess = point_a.shininess * u + point_b.shininess * v + point_c.shininess * (1.0 - u - v);
+		hit.color_diffuse = point_a.color_diffuse * u + point_b.color_diffuse * v + point_c.color_diffuse * w;
+		hit.color_specular = point_a.color_specular * u + point_b.color_specular * v + point_c.color_specular * w;
+		hit.shininess = point_a.shininess * u + point_b.shininess * v + point_c.shininess * w;
 	}
 
 	glm::dvec3 color = black_col;
