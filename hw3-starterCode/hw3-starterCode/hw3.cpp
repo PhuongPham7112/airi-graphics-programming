@@ -1,11 +1,19 @@
-/* **************************
+﻿/* **************************
  * CSCI 420
  * Assignment 3 Raytracer
- * Name: Airi Pham
+ * Name: <Your name here>
+ * *************************
+*/
+
+/* **************************
+ * Environment
+ 1. Camera is placed at origin (0,0,0)
+ 2. Focal Length is set to 1
  * *************************
 */
 
 #ifdef WIN32
+# define NOMINMAX
 #include <windows.h>
 #endif
 
@@ -17,23 +25,35 @@
 #include <GLUT/glut.h>
 #endif
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits>
+#include <imageIO.h>
+#include <algorithm>
+#include <iostream>
+#include <random>
+
 #ifdef WIN32
 #define strcasecmp _stricmp
 #endif
 
-#include <imageIO.h>
-#include <glm/glm.hpp>
-#include <cmath>
-#include <limits>
-#include <algorithm>
-#include <iostream>
-
-#define MAX_TRIANGLES 20000
+#define MAX_TRIANGLES 2000
 #define MAX_SPHERES 100
 #define MAX_LIGHTS 100
+
+#define EPSILON 1e-5
+#define PI 3.14159
+
+// TODO change these parameters for different effect
+#define WIDTH 640
+#define HEIGHT 480
+#define MAX_REFLECTION 3
+#define REFLECT_RATIO 0.1
+#define ANTI_ALIASING true
+#define SOFT_SHADOW true
+#define SUB_LIGHTS 30
 
 char* filename = NULL;
 
@@ -43,25 +63,36 @@ char* filename = NULL;
 
 int mode = MODE_DISPLAY;
 
-//you may want to make these smaller for debugging purposes
-#define WIDTH 640
-#define HEIGHT 480
-
 //the field of view of the camera
 #define fov 60.0
-#define PI 3.14159
-#define eps 0.00001
+
+using namespace std;
 
 unsigned char buffer[HEIGHT][WIDTH][3];
-double min_x, min_y;
-double c_width, c_height;
+double cell_width, cell_height;
+double x_min, y_min;
+
+struct Vec {
+	double x, y, z;                  // position, also color (r,g,b)
+	Vec(double x_ = 0, double y_ = 0, double z_ = 0) { x = x_; y = y_; z = z_; }
+	Vec operator+(const Vec& b) const { return Vec(x + b.x, y + b.y, z + b.z); }
+	Vec operator-(const Vec& b) const { return Vec(x - b.x, y - b.y, z - b.z); }
+	Vec operator-() const { return Vec(-x, -y, -z); }
+	Vec operator*(double b) const { return Vec(x * b, y * b, z * b); }
+	Vec operator/(double b) const { return Vec(x / b, y / b, z / b); }
+	Vec mult(const Vec& b) const { return Vec(x * b.x, y * b.y, z * b.z); }
+	Vec& norm() { return *this = *this * (1 / sqrt(x * x + y * y + z * z)); }
+	double dot(const Vec& b) const { return x * b.x + y * b.y + z * b.z; }
+	double _2norm() { return sqrt(x * x + y * y + z * z); }
+	Vec cross(const Vec& b) const { return Vec(y * b.z - z * b.y, z * b.x - x * b.z, x * b.y - y * b.x); }
+};
 
 struct Vertex
 {
-	glm::dvec3 position;
-	glm::dvec3 color_diffuse;
-	glm::dvec3 color_specular;
-	glm::dvec3 normal;
+	Vec position;
+	Vec color_diffuse;
+	Vec color_specular;
+	Vec normal;
 	double shininess;
 };
 
@@ -72,31 +103,30 @@ struct Triangle
 
 struct Sphere
 {
-	glm::dvec3 position;
-	glm::dvec3 color_diffuse;
-	glm::dvec3 color_specular;
+	Vec position;
+	Vec color_diffuse;
+	Vec color_specular;
 	double shininess;
 	double radius;
 };
 
 struct Light
 {
-	glm::dvec3 position;
-	glm::dvec3 color;
+	Vec position;
+	Vec color;
 };
 
 struct Ray
 {
-	glm::dvec3 src;
-	glm::dvec3 dir;
+	Vec o, d;
 };
 
 Triangle triangles[MAX_TRIANGLES];
 Sphere spheres[MAX_SPHERES];
 Light lights[MAX_LIGHTS];
-glm::dvec3 ambient_light;
-glm::dvec3 black_col = glm::dvec3(0.0, 0.0, 0.0);
-glm::dvec3 cam_pos = glm::dvec3(0.0, 0.0, 0.0);
+Vec ambient_light;
+Vec background_color = Vec(1.0, 1.0, 1.0);
+
 int num_triangles = 0;
 int num_spheres = 0;
 int num_lights = 0;
@@ -104,245 +134,357 @@ int num_lights = 0;
 void plot_pixel_display(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 void plot_pixel_jpeg(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 void plot_pixel(int x, int y, unsigned char r, unsigned char g, unsigned char b);
+inline void UpdateProgress(float progress);
 
-bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, double& v)
+inline double RandomValue()
 {
-	// get intersection
-	// test point inside triangle: project 3D to 2D and use baycentric coordinate in 2D
-	hit_dist = std::numeric_limits<double>::max();
-	tri_idx = -1;
-	for (int i = 0; i < num_triangles; i++)
-	{
-		Triangle tri = triangles[i];
-		glm::dvec3 pos_a = (tri.v[0].position);
-		glm::dvec3 pos_b = (tri.v[1].position);
-		glm::dvec3 pos_c = (tri.v[2].position);
-		glm::dvec3 ab = pos_b - pos_a;
-		glm::dvec3 bc = pos_c - pos_b;
-		glm::dvec3 ca = pos_a - pos_c;
-		glm::dvec3 normal = glm::normalize(glm::cross(ab, ca));
-		double check_paral = glm::dot(normal, ray.dir);
-		if (abs(check_paral) < eps) // ray parallel to plane
-		{
-			//std::cout << "Parallel with ray" << std::endl;
-			continue;
-		}
-		// find intersectional point
-		double coeff_d = -glm::dot(normal, pos_a);
-		double t = -(glm::dot(normal, ray.src) + coeff_d) / (check_paral);
-		if (t < eps)
-		{
-			// std::cout << "Too small dist : " << t << std::endl;
-			continue;
-		}
-		glm::dvec3 intersect = ray.src + ray.dir * t;
+	std::random_device dev;
+	std::mt19937 rng(dev());
+	std::uniform_real_distribution<double> dist(0.f, 1);
 
-		// test inside-outside test: barycentric interpolation
-		glm::dvec3 xy_plane = glm::dvec3(1.0, 1.0, 0.0);
-		glm::dvec3 yz_plane = glm::dvec3(0.0, 1.0, 1.0);
-		glm::dvec3 zx_plane = glm::dvec3(1.0, 0.0, 1.0);
-		double proj_xy = glm::dot(xy_plane, normal);
-		double tri_area, pbc_area, pca_area, pab_area;
-		if (glm::dot(xy_plane, normal) != 0.0) // project on xy plane
-		{
-			tri_area = 0.5 * ((pos_b.x - pos_a.x) * (pos_c.y - pos_a.y) - (pos_c.x - pos_a.x) * (pos_b.y - pos_a.y));
-			pbc_area = 0.5 * ((pos_b.x - intersect.x) * (pos_c.y - intersect.y) - (pos_c.x - intersect.x) * (pos_b.y - intersect.y));
-			pca_area = 0.5 * ((pos_a.x - intersect.x) * (pos_c.y - intersect.y) - (pos_c.x - intersect.x) * (pos_a.y - intersect.y));
-			pab_area = 0.5 * ((pos_b.x - intersect.x) * (pos_a.y - intersect.y) - (pos_a.x - intersect.x) * (pos_b.y - intersect.y));
-		}
-		else if (glm::dot(yz_plane, normal) != 0.0) // project on yz plane
-		{
-			tri_area = 0.5 * ((pos_b.y - pos_a.y) * (pos_c.z - pos_a.z) - (pos_c.y - pos_a.y) * (pos_b.z - pos_a.z));
-			pbc_area = 0.5 * ((pos_b.y - intersect.y) * (pos_c.z - intersect.z) - (pos_c.y - intersect.y) * (pos_b.z - intersect.z));
-			pca_area = 0.5 * ((pos_a.y - intersect.y) * (pos_c.z - intersect.z) - (pos_c.y - intersect.y) * (pos_a.z - intersect.z));
-			pab_area = 0.5 * ((pos_b.y - intersect.y) * (pos_a.z - intersect.z) - (pos_a.y - intersect.y) * (pos_b.z - intersect.z));
-		}
-		else if (glm::dot(zx_plane, normal) != 0.0) // project on zx plane
-		{
-			tri_area = 0.5 * ((pos_b.z - pos_a.z) * (pos_c.x - pos_a.x) - (pos_c.z - pos_a.z) * (pos_b.x - pos_a.x));
-			pbc_area = 0.5 * ((pos_b.z - intersect.z) * (pos_c.x - intersect.x) - (pos_c.z - intersect.z) * (pos_b.x - intersect.x));
-			pca_area = 0.5 * ((pos_a.z - intersect.z) * (pos_c.x - intersect.x) - (pos_c.z - intersect.z) * (pos_a.x - intersect.x));
-			pab_area = 0.5 * ((pos_b.z - intersect.z) * (pos_a.x - intersect.x) - (pos_a.z - intersect.z) * (pos_b.x - intersect.x));
-		}
-		if (tri_area < eps)
-			continue;
-
-		double alpha = pbc_area / tri_area;
-		double beta = pca_area / tri_area;
-		double gamma = pab_area / tri_area;
-
-		// outside of triangle
-		if (alpha < 0.0 || beta < 0.0 || gamma < 0.0) continue; // outside of triangle
-		else if (t < hit_dist && t > eps)
-		{
-			hit_dist = t;
-			tri_idx = i;
-			u = alpha;
-			v = beta;
-		}
-	}
-	return tri_idx > -1;
+	return dist(rng);
 }
 
-bool intersect_sphere(Ray& ray, double& hit_dist, int& sph_idx)
+void InitRays(int row, int col, Ray(&r)[4])
 {
-	hit_dist = std::numeric_limits<double>::max();
-	sph_idx = -1;
-	// iterate to find the closest hit point among the spheres
+
+	double x = x_min + (2 * row + 1) * cell_width / 2.0f;
+	double y = y_min + (2 * col + 1) * cell_height / 2.0f;
+	double z = -1;
+
+	r[0] = { Vec(0,0,0),  Vec(x - cell_width / 4.0f,y,z).norm() };
+	r[1] = { Vec(0,0,0),  Vec(x + cell_width / 4.0f,y,z).norm() };
+	r[2] = { Vec(0,0,0),  Vec(x,y - cell_height / 4.0f,z).norm() };
+	r[3] = { Vec(0,0,0),  Vec(x,y + cell_height / 4.0f,z).norm() };
+}
+
+void initLights()
+{
+	if (!SOFT_SHADOW)
+		return;
+
+	// add sub lights
+	int origin_light_num = num_lights;
+
+	for (int i = 0; i < origin_light_num; i++)
+	{
+		Vec color = lights[i].color / SUB_LIGHTS;
+		Vec center = lights[i].position;
+
+		lights[i].color = color;
+		for (int j = 0; j < (SUB_LIGHTS - 1); j++)
+		{
+			lights[num_lights].color = color;
+			lights[num_lights].position = Vec(center.x + RandomValue(), center.y + RandomValue(), center.z + RandomValue());
+			num_lights++;
+		}
+	}
+	return;
+}
+
+void Clamp(Vec& color)
+{
+	if (color.x > 1.0)
+		color.x = 1.0;
+	if (color.y > 1.0)
+		color.y = 1.0;
+	if (color.z > 1.0)
+		color.z = 1.0;
+}
+
+bool InRange(double v, double low, double high)
+{
+	return (v >= low && v <= high);
+}
+
+Vec ReflectDir(const Vec& I, const Vec& N) //I and N should be normalized
+{
+	Vec reflect = I - N * 2 * N.dot(I);
+	return reflect.norm();
+}
+
+Vec RefractDir(const Vec& I, const Vec& N, const double& ratio) //I and N should be normalized
+{
+	double k = 1.0 - ratio * ratio * (1.0 - N.dot(I) * N.dot(I));
+	if (k < 0.0)
+		return Vec(0, 0, 0);
+	else
+		return I * ratio - N * (ratio * N.dot(I) + sqrt(k));
+}
+
+/*-----------------------------------------------------
+ *                     Sphere
+ -----------------------------------------------------*/
+bool SphereIntersect(const Ray& r, double& t, int& idx)
+{
+	t = numeric_limits<double>::max();
+	idx = -1;
 	for (int i = 0; i < num_spheres; i++)
 	{
-		Sphere sph = spheres[i];
-		glm::vec3 dist = ray.src - sph.position;
-		double coeff_a = pow(ray.dir.x, 2) + pow(ray.dir.y, 2) + pow(ray.dir.z, 2);
-		double coeff_b = 2 * (ray.dir.x * dist.x + ray.dir.y * dist.y + ray.dir.z * dist.z);
-		double coeff_c = glm::dot(dist, dist) - pow(sph.radius, 2);
-		double det = pow(coeff_b, 2) - 4 * coeff_c;
-		if (det < 0.0) // ignore
-			continue;
-		double t0 = (-coeff_b + sqrt(det)) / 2.0;
-		double t1 = (-coeff_b - sqrt(det)) / 2.0;
-		double result = std::min(t0, t1);
-		if (result > eps && result < hit_dist)
+		Vec oc = Vec(r.o - spheres[i].position);
+		double a = 1;
+		double b = 2 * oc.dot(r.d);
+		double c = oc.dot(oc) - pow(spheres[i].radius, 2);
+		double delta = b * b - 4 * a * c;
+		if (delta < 0) continue;
+		double t1 = (-b + sqrt(delta)) / 2;
+		double t2 = (-b - sqrt(delta)) / 2;
+		double _t = min(t1, t2);
+		if (_t > EPSILON && _t < t)
 		{
-			hit_dist = result;
-			sph_idx = i;
+			t = _t;
+			idx = i;
 		}
 	}
-	return sph_idx > -1;
+	return (idx != -1);
 }
 
-glm::dvec3 calc_phong(const Vertex& hit_point, const Light& light)
+/*-----------------------------------------------------
+ *                      Triangle
+ -----------------------------------------------------*/
+bool TriangleIntersect(const Ray& r, double& t, int& idx)
 {
-	glm::dvec3 n = hit_point.normal;
-	glm::dvec3 l = glm::normalize(light.position - hit_point.position);
-	glm::dvec3 v = glm::normalize(hit_point.position - cam_pos);
-	glm::dvec3 r = 2.0 * glm::dot(l, n) * n - l;
-	double diffuse_coeff = std::max(glm::dot(l, n), 0.0);
-	double specular_coeff = pow(std::max(glm::dot(r, v), 0.0), hit_point.shininess);
-	glm::dvec3 I = light.color * (diffuse_coeff * hit_point.color_diffuse + specular_coeff * hit_point.color_specular);
-	return I;
-}
-
-bool is_in_shadow(const Light& light, const Vertex& hit_point)
-{
-	double hit_dist_sph, hit_dist_tri, u, v;
-	int sph_idx, tri_idx;
-	glm::dvec3 light_pos = (light.position);
-	glm::dvec3 hit_pos = (hit_point.position);
-	glm::dvec3 shadow_dir = glm::normalize(light_pos - hit_pos);
-	Ray shadow_ray = { hit_pos, shadow_dir };
-	bool hit_triangle = intersect_triangle(shadow_ray, hit_dist_tri, tri_idx, u, v);
-	bool hit_sphere = intersect_sphere(shadow_ray, hit_dist_sph, sph_idx);
-	// if not in shadow
-	if (!hit_triangle && !hit_sphere)
+	t = numeric_limits<double>::max();
+	idx = -1;
+	for (int i = 0; i < num_triangles; i++)
 	{
+		// Möller Trumbore Algorithm
+		Vec e1 = triangles[i].v[1].position - triangles[i].v[0].position;
+		Vec e2 = triangles[i].v[2].position - triangles[i].v[0].position;
+		Vec s = r.o - triangles[i].v[0].position;
+		Vec s1 = r.d.cross(e2);
+		Vec s2 = s.cross(e1);
+		double k = s1.dot(e1);
+		if (k > -EPSILON && k < EPSILON)
+			continue;
+		double _t = 1 / k * s2.dot(e2);
+		double b1 = 1 / k * s1.dot(s);
+		double b2 = 1 / k * s2.dot(r.d);
+		double b3 = 1 - b1 - b2;
+		if (_t < EPSILON || !InRange(b1, 0, 1) || !InRange(b2, 0, 1) || !InRange(b3, 0, 1))
+			continue;
+		if (_t < t)
+		{
+			t = _t;
+			idx = i;
+		}
+	}
+
+	return (idx != -1);
+}
+
+void CalcColorRatio(int& idx, Vec pos, double(&ratio)[3])
+{
+	Vec ab = triangles[idx].v[1].position - triangles[idx].v[0].position;
+	Vec ac = triangles[idx].v[2].position - triangles[idx].v[0].position;
+	double ABC_Area = ab.cross(ac)._2norm() * 0.5f;
+	Vec pa = triangles[idx].v[0].position - pos;
+	Vec pb = triangles[idx].v[1].position - pos;
+	Vec pc = triangles[idx].v[2].position - pos;
+
+	double PBC_Area = pb.cross(pc)._2norm() * 0.5f;
+	double PCA_Area = pc.cross(pa)._2norm() * 0.5f;
+	double PAB_Area = pa.cross(pb)._2norm() * 0.5f;
+
+	ratio[0] = PBC_Area / ABC_Area;
+	ratio[1] = PCA_Area / ABC_Area;
+	ratio[2] = PAB_Area / ABC_Area;
+}
+
+/*-----------------------------------------------------
+ *                     Ray Tracing
+ -----------------------------------------------------*/
+bool InShadow(const Light& light, const Vertex& point)
+{
+	Vec dir = (light.position - point.position).norm();
+	Ray shadowRay = { point.position + dir * 5 * EPSILON, dir };
+
+	double t1, t2; int i1, i2;
+	bool hitSphere = SphereIntersect(shadowRay, t1, i1);
+	bool hitTriangle = TriangleIntersect(shadowRay, t2, i2);
+
+	// hit nothing
+	if (!hitSphere && !hitTriangle)
 		return false;
-	}
-	// if in shadow
-	glm::dvec3 shadow_hit_pos;
-	if ((hit_sphere && !hit_triangle)
-		|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri))
-	{
-		shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_sph;
-	}
+
+	// hit point should not exceed light position
+	Vec hitPos;
+	if ((hitSphere && !hitTriangle) || (hitSphere && hitTriangle && t1 < t2))
+		hitPos = shadowRay.o + shadowRay.d * t1;
 	else
-	{
-		shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_tri;
-	}
-	if (glm::dot(hit_pos - shadow_hit_pos, hit_pos - shadow_hit_pos) - glm::dot(hit_pos - light_pos, hit_pos - light_pos) > eps)
+		hitPos = shadowRay.o + shadowRay.d * t2;
+
+	double len_point2light = (point.position - light.position)._2norm();
+	double len_point2hit = (point.position - hitPos)._2norm();
+	if (len_point2hit - len_point2light > EPSILON)
 		return false;
+
 	return true;
 }
 
-glm::dvec3 calc_color(Ray& ray)
+Vec CalcShading(Vertex& hitPoint, Light& light)
 {
-	double hit_dist_sph, hit_dist_tri;
-	int sph_idx, tri_idx;
-	double u, v;
-	bool hit_sphere = intersect_sphere(ray, hit_dist_sph, sph_idx);
-	bool hit_triangle = intersect_triangle(ray, hit_dist_tri, tri_idx, u, v);
-	Vertex hit;
-	Sphere intersected_sph;
-	Triangle intersected_tri;
-	if (!hit_sphere && !hit_triangle)
-		return black_col;
-	else if ((hit_sphere && !hit_triangle)
-		|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri)) // hit sphere first
+	Vec diffuse, specular;
+	Vec lightDir = (light.position - hitPoint.position).norm();
+	double diff = max(lightDir.dot(hitPoint.normal), 0.0);
+	diffuse = light.color.mult(hitPoint.color_diffuse * diff);
+
+	// camera is at origin
+	Vec viewDir = (-hitPoint.position).norm();
+	Vec reflectDir = ReflectDir(-lightDir, hitPoint.normal);
+	double spec = pow(max(viewDir.dot(reflectDir), 0.0), hitPoint.shininess);
+	specular = light.color.mult(hitPoint.color_specular * spec);
+
+	return diffuse + specular;
+}
+
+Vec CalcRadiance(const Ray& r, int times)
+{
+	double t1, t2; int idx1, idx2;
+	bool hitSphere = SphereIntersect(r, t1, idx1);
+	bool hitTriangle = TriangleIntersect(r, t2, idx2);
+
+	// hit nothing
+	if (!hitSphere && !hitTriangle)
+		return background_color;
+
+	Vertex hitPoint;
+	// hit sphere
+	if ((hitSphere && !hitTriangle) || (hitSphere && hitTriangle && t1 < t2))
 	{
-		//std::cout << "Hit a sphere" << std::endl;
-		intersected_sph = spheres[sph_idx];
-		hit.position = ray.src + ray.dir * hit_dist_sph;
-		double length = glm::length(hit.position - intersected_sph.position);
-		hit.normal = glm::normalize((1.0 / intersected_sph.radius) * (hit.position - intersected_sph.position));
-		hit.color_diffuse = intersected_sph.color_diffuse;
-		hit.color_specular = intersected_sph.color_specular;
-		hit.shininess = intersected_sph.shininess;
+		hitPoint = {
+				r.o + r.d * t1,
+				spheres[idx1].color_diffuse,
+				spheres[idx1].color_specular,
+				(r.o + r.d * t1 - spheres[idx1].position).norm(),
+				spheres[idx1].shininess
+		};
 	}
+	// hit triangle
 	else
 	{
-		// std::cout << "Hit a triangle" << std::endl;
-		intersected_tri = triangles[tri_idx];
-		Vertex point_a = intersected_tri.v[0];
-		Vertex point_b = intersected_tri.v[1];
-		Vertex point_c = intersected_tri.v[2];
-		hit.position = ray.src + ray.dir * hit_dist_tri;
-		hit.normal = glm::normalize(point_a.normal * u + point_b.normal * v + point_c.normal * (1.0 - u - v));
-		hit.color_diffuse = point_a.color_diffuse * u + point_b.color_diffuse * v + point_c.color_diffuse * (1.0 - u - v);
-		hit.color_specular = point_a.color_specular * u + point_b.color_specular * v + point_c.color_specular * (1.0 - u - v);
-		hit.shininess = point_a.shininess * u + point_b.shininess * v + point_c.shininess * (1.0 - u - v);
+		double ratio[3];
+		Vec position = r.o + r.d * t2;
+		CalcColorRatio(idx2, position, ratio);
+		Vec diffuse = triangles[idx2].v[0].color_diffuse * ratio[0] +
+			triangles[idx2].v[1].color_diffuse * ratio[1] +
+			triangles[idx2].v[2].color_diffuse * ratio[2];
+
+		Vec specular = triangles[idx2].v[0].color_specular * ratio[0] +
+			triangles[idx2].v[1].color_specular * ratio[1] +
+			triangles[idx2].v[2].color_specular * ratio[2];
+
+		Vec normal = triangles[idx2].v[0].normal * ratio[0] +
+			triangles[idx2].v[1].normal * ratio[1] +
+			triangles[idx2].v[2].normal * ratio[2];
+
+		double shininess = triangles[idx2].v[0].shininess * ratio[0] +
+			triangles[idx2].v[1].shininess * ratio[1] +
+			triangles[idx2].v[2].shininess * ratio[2];
+		hitPoint = {
+				position,
+				diffuse,
+				specular,
+				normal.norm(),
+				shininess
+		};
 	}
 
-	glm::dvec3 color = black_col;
-	for (int i = 0; i < num_lights; i++) // accumulate all light
+	Vec curRayColor = Vec(0, 0, 0);
+	// for each light
+	for (int k = 0; k < num_lights; k++)
 	{
-		if (!is_in_shadow(lights[i], hit))
+		if (!InShadow(lights[k], hitPoint))
 		{
-			color = color + calc_phong(hit, lights[i]);
+			curRayColor = curRayColor + CalcShading(hitPoint, lights[k]);
 		}
 	}
-	return color;
+
+	// the last recursive ray
+	if (times >= MAX_REFLECTION)
+		return curRayColor;
+
+	times++;
+	// reflect Ray
+	Vec reflectDir = ReflectDir(r.d, hitPoint.normal);
+	Ray reflectRay = { hitPoint.position, reflectDir };
+	Vec reflectColor = CalcRadiance(reflectRay, times);
+
+	return curRayColor * (1 - REFLECT_RATIO) + reflectColor * REFLECT_RATIO;
+}
+
+void InitScreen()
+{
+	double aspectRatio = (double)WIDTH / HEIGHT;
+
+	float rad = fov * PI / 180;
+	double screen_width = 2 * aspectRatio * tan(rad / 2);
+	double screen_height = 2 * tan(rad / 2);
+	cell_width = screen_width / WIDTH;
+	cell_height = screen_height / HEIGHT;
+	x_min = -aspectRatio * tan(rad / 2);
+	y_min = -tan(rad / 2);
 }
 
 //MODIFY THIS FUNCTION
-void init_scene()
-{
-	double asp = (double)WIDTH / (double)HEIGHT;
-	double rad_fov = fov * PI / 180.0;
-	double y = tan(rad_fov * 0.5);
-	min_x = -asp * y;
-	min_y = -y;
-	c_width = (2.0 * asp * y) / WIDTH;
-	c_height = (2.0 * y) / HEIGHT;
-}
-
-
 void draw_scene()
 {
-	init_scene();
-	//for loop sending rays to every point within the image
+	InitScreen();
+	//a simple test output
 	for (unsigned int x = 0; x < WIDTH; x++)
 	{
 		glPointSize(2.0);
 		glBegin(GL_POINTS);
 		for (unsigned int y = 0; y < HEIGHT; y++)
 		{
-			// init rays
-			Ray ray;
-			ray.src = cam_pos;
-			double pixel_x = min_x + x * c_width + c_width / 2.0;
-			double pixel_y = min_y + y * c_height + c_height / 2.0;
-			ray.dir = glm::normalize(glm::dvec3(pixel_x, pixel_y, -1.0));
-			glm::dvec3 col = calc_color(ray) + ambient_light;
-			plot_pixel(x, y,
-				static_cast<int>(col.x * 255),
-				static_cast<int>(col.y * 255),
-				static_cast<int>(col.z * 255));
+			if (ANTI_ALIASING)
+			{
+				Ray rays[4];
+				Vec color;
+				InitRays(x, y, rays);
+				for (int k = 0; k < 4; k++)
+				{
+					color = color + CalcRadiance(rays[k], 0);
+				}
+				color = color / 4;
+				plot_pixel(x, y, (int)(color.x * 255), (int)(color.y * 255), (int)(color.z * 255));
+			}
+			else
+			{
+				Ray ray;
+				Vec color;
+				double xx = x_min + (2 * x + 1) * cell_width / 2.0f;
+				double yy = y_min + (2 * y + 1) * cell_height / 2.0f;
+				double zz = -1;
+
+				ray = { Vec(0,0,0),  Vec(xx,yy,zz).norm() };
+				color = CalcRadiance(ray, 1) + ambient_light;
+				Clamp(color);
+				plot_pixel(x, y, (int)(color.x * 255), (int)(color.y * 255), (int)(color.z * 255));
+			}
+
 		}
+		UpdateProgress(x / (float)WIDTH);
 		glEnd();
 		glFlush();
 	}
 	printf("Done!\n"); fflush(stdout);
 }
+
+inline void UpdateProgress(float progress)
+{
+	int barWidth = 30;
+
+	std::cout << "[";
+	int pos = barWidth * progress;
+	for (int i = 0; i < barWidth; ++i) {
+		if (i < pos) std::cout << "=";
+		else if (i == pos) std::cout << ">";
+		else std::cout << " ";
+	}
+	std::cout << "] " << int(progress * 100.0) << " %\r";
+	std::cout.flush();
+};
 
 void plot_pixel_display(int x, int y, unsigned char r, unsigned char g, unsigned char b)
 {
@@ -385,13 +527,13 @@ void parse_check(const char* expected, char* found)
 	}
 }
 
-void parse_doubles(FILE* file, const char* check, glm::dvec3& p)
+void parse_doubles(FILE* file, const char* check, Vec& p)
 {
 	char str[100];
 	fscanf(file, "%s", str);
 	parse_check(check, str);
 	fscanf(file, "%lf %lf %lf", &p.x, &p.y, &p.z);
-	printf("%s %lf %lf %lf\n", check, p.x, p.y, p.z);
+	//printf("%s %lf %lf %lf\n",check,p.x,p.y,p.z);
 }
 
 void parse_rad(FILE* file, double* r)
@@ -400,7 +542,7 @@ void parse_rad(FILE* file, double* r)
 	fscanf(file, "%s", str);
 	parse_check("rad:", str);
 	fscanf(file, "%lf", r);
-	printf("rad: %f\n", *r);
+	//printf("rad: %f\n",*r);
 }
 
 void parse_shi(FILE* file, double* shi)
@@ -409,7 +551,7 @@ void parse_shi(FILE* file, double* shi)
 	fscanf(file, "%s", s);
 	parse_check("shi:", s);
 	fscanf(file, "%lf", shi);
-	printf("shi: %f\n", *shi);
+	//printf("shi: %f\n",*shi);
 }
 
 int loadScene(char* argv)
@@ -429,10 +571,10 @@ int loadScene(char* argv)
 	for (int i = 0; i < number_of_objects; i++)
 	{
 		fscanf(file, "%s\n", type);
-		printf("%s\n", type);
+		//printf("%s\n",type);
 		if (strcasecmp(type, "triangle") == 0)
 		{
-			printf("found triangle\n");
+			//printf("found triangle\n");
 			for (int j = 0; j < 3; j++)
 			{
 				parse_doubles(file, "pos:", t.v[j].position);
@@ -451,7 +593,7 @@ int loadScene(char* argv)
 		}
 		else if (strcasecmp(type, "sphere") == 0)
 		{
-			printf("found sphere\n");
+			//printf("found sphere\n");
 
 			parse_doubles(file, "pos:", s.position);
 			parse_rad(file, &s.radius);
@@ -468,7 +610,7 @@ int loadScene(char* argv)
 		}
 		else if (strcasecmp(type, "light") == 0)
 		{
-			printf("found light\n");
+			//printf("found light\n");
 			parse_doubles(file, "pos:", l.position);
 			parse_doubles(file, "col:", l.color);
 
@@ -487,7 +629,6 @@ int loadScene(char* argv)
 	}
 	return 0;
 }
-
 void display()
 {
 }
@@ -509,6 +650,7 @@ void idle()
 	static int once = 0;
 	if (!once)
 	{
+		initLights();
 		draw_scene();
 		if (mode == MODE_JPEG)
 			save_jpg();
