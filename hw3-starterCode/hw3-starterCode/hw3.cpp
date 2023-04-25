@@ -29,6 +29,7 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
+#include <iostream>
 
 #define MAX_TRIANGLES 20000
 #define MAX_SPHERES 100
@@ -57,10 +58,10 @@ double c_width, c_height;
 
 struct Vertex
 {
-	double position[3];
-	double color_diffuse[3];
-	double color_specular[3];
-	double normal[3];
+	glm::dvec3 position;
+	glm::dvec3 color_diffuse;
+	glm::dvec3 color_specular;
+	glm::dvec3 normal;
 	double shininess;
 };
 
@@ -71,17 +72,17 @@ struct Triangle
 
 struct Sphere
 {
-	double position[3];
-	double color_diffuse[3];
-	double color_specular[3];
+	glm::dvec3 position;
+	glm::dvec3 color_diffuse;
+	glm::dvec3 color_specular;
 	double shininess;
 	double radius;
 };
 
 struct Light
 {
-	double position[3];
-	double color[3];
+	glm::dvec3 position;
+	glm::dvec3 color;
 };
 
 struct Ray
@@ -93,8 +94,9 @@ struct Ray
 Triangle triangles[MAX_TRIANGLES];
 Sphere spheres[MAX_SPHERES];
 Light lights[MAX_LIGHTS];
-double ambient_light[3];
+glm::dvec3 ambient_light;
 glm::dvec3 black_col = glm::dvec3(0.0, 0.0, 0.0);
+glm::dvec3 cam_pos = glm::dvec3(0.0, 0.0, 0.0);
 int num_triangles = 0;
 int num_spheres = 0;
 int num_lights = 0;
@@ -102,33 +104,6 @@ int num_lights = 0;
 void plot_pixel_display(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 void plot_pixel_jpeg(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 void plot_pixel(int x, int y, unsigned char r, unsigned char g, unsigned char b);
-
-void convert_array_to_dvec3(const double arr[3], glm::dvec3& vec)
-{
-	vec = glm::dvec3(arr[0], arr[1], arr[2]);
-}
-
-glm::dvec3 calc_tri_ratio(Triangle& tri, glm::dvec3& hit_tri_pos)
-{
-	Vertex point_a = tri.v[0];
-	Vertex point_b = tri.v[1];
-	Vertex point_c = tri.v[2];
-	glm::dvec3 pos_a = glm::dvec3(point_a.position[0], point_a.position[1], point_a.position[2]);
-	glm::dvec3 pos_b = glm::dvec3(point_b.position[0], point_b.position[1], point_b.position[2]);
-	glm::dvec3 pos_c = glm::dvec3(point_c.position[0], point_c.position[1], point_c.position[2]);
-	glm::dvec3 ab = pos_b - pos_a;
-	glm::dvec3 ac = pos_c - pos_a;
-	double tri_area = glm::dot(glm::cross(ab, ac), glm::cross(ab, ac)) * 0.5;
-	glm::dvec3 pa = pos_a - hit_tri_pos;
-	glm::dvec3 pb = pos_b - hit_tri_pos;
-	glm::dvec3 pc = pos_c - hit_tri_pos;
-
-	double pbc_area = glm::dot(glm::cross(pb, pc), glm::cross(pb, pc)) * 0.5;
-	double pca_area = glm::dot(glm::cross(pc, pa), glm::cross(pc, pa)) * 0.5;
-	double pab_area = glm::dot(glm::cross(pa, pb), glm::cross(pa, pb)) * 0.5;
-	return glm::dvec3(pbc_area / tri_area, pca_area / tri_area, pab_area / tri_area);
-}
-
 
 bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, double& v)
 {
@@ -139,39 +114,62 @@ bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, dou
 	for (int i = 0; i < num_triangles; i++)
 	{
 		Triangle tri = triangles[i];
-		Vertex point_a = tri.v[0];
-		Vertex point_b = tri.v[1];
-		Vertex point_c = tri.v[2];
-		glm::dvec3 pos_a = glm::dvec3(point_a.position[0], point_a.position[1], point_a.position[2]);
-		glm::dvec3 pos_b = glm::dvec3(point_b.position[0], point_b.position[1], point_b.position[2]);
-		glm::dvec3 pos_c = glm::dvec3(point_c.position[0], point_c.position[1], point_c.position[2]);
+		glm::dvec3 pos_a = (tri.v[0].position);
+		glm::dvec3 pos_b = (tri.v[1].position);
+		glm::dvec3 pos_c = (tri.v[2].position);
 		glm::dvec3 ab = pos_b - pos_a;
 		glm::dvec3 bc = pos_c - pos_b;
 		glm::dvec3 ca = pos_a - pos_c;
 		glm::dvec3 normal = glm::normalize(glm::cross(ab, ca));
-		double sqr_normal = glm::dot(normal, normal);
-		double coeff_d = (-normal.x * ray.src.x + normal.y * ray.src.y + normal.z * ray.src.z);
-		if (glm::dot(normal, ray.dir) == 0.0) // ray parallel to plane
+		double coeff_d = -glm::dot(normal, pos_a);
+		double check_paral = glm::dot(normal, ray.dir);
+		if (check_paral == 0.0) // ray parallel to plane
+		{
+			//std::cout << "Parallel with ray" << std::endl;
 			continue;
+		}
 		// find intersectional point
-		double t = -(glm::dot(normal, ray.src) + coeff_d) / (glm::dot(normal, ray.dir));
-		if (t <= 0.0) continue;
+		double t = -(glm::dot(normal, ray.src) + coeff_d) / (check_paral);
+		if (t < eps)
+		{
+			//std::cout << "Too small dist : " << t << std::endl;
+			continue;
+		}
 		glm::dvec3 intersect = ray.src + ray.dir * t;
-		// test inside-outside test
-		// test edge ab
-		glm::dvec3 ia = intersect - pos_a;
-		glm::dvec3 ib = intersect - pos_b;
-		glm::dvec3 ic = intersect - pos_c;
+		// test inside-outside test: barycentric interpolation
+		glm::dvec3 xy_plane = glm::dvec3(1.0, 1.0, 0.0);
+		double proj_xy = glm::dot(xy_plane, normal);
+		double tri_area, pbc_area, pca_area, pab_area;
+		if (proj_xy != 0.0) // project on xy plane
+		{
+			tri_area = 0.5 * ((pos_b.x - pos_a.x) * (pos_c.y - pos_a.y) - (pos_c.x - pos_a.x) * (pos_b.y - pos_a.y));
+			pbc_area = 0.5 * ((pos_b.x - intersect.x) * (pos_c.y - intersect.y) - (pos_c.x - intersect.x) * (pos_b.y - intersect.y));
+			pca_area = 0.5 * ((pos_a.x - intersect.x) * (pos_c.y - intersect.y) - (pos_c.x - intersect.x) * (pos_a.y - intersect.y));
+			pab_area = 0.5 * ((pos_b.x - intersect.x) * (pos_a.y - intersect.y) - (pos_a.x - intersect.x) * (pos_b.y - intersect.y));
+		}
+		else // project on yz plane
+		{
+			tri_area = 0.5 * ((pos_b.y - pos_a.y) * (pos_c.z - pos_a.z) - (pos_c.y - pos_a.y) * (pos_b.z - pos_a.z));
+			pbc_area = 0.5 * ((pos_b.y - intersect.y) * (pos_c.z - intersect.z) - (pos_c.y - intersect.y) * (pos_b.z - intersect.z));
+			pca_area = 0.5 * ((pos_a.y - intersect.y) * (pos_c.z - intersect.z) - (pos_c.y - intersect.y) * (pos_a.z - intersect.z));
+			pab_area = 0.5 * ((pos_b.y - intersect.y) * (pos_a.z - intersect.z) - (pos_a.y - intersect.y) * (pos_b.z - intersect.z));
+		}
 
-		if (glm::dot(normal, glm::cross(ab, ia)) < 0.0) continue;
-		if (u = glm::dot(normal, glm::cross(bc, ib)) < 0.0) continue;
-		if (v = glm::dot(normal, glm::cross(ca, ic)) < 0.0) continue;
-		if (t < hit_dist && t > eps)
+		double alpha = pbc_area / tri_area;
+		double beta = pca_area / tri_area;
+
+		// outside of triangle
+		if (alpha < 0.0 || beta < 0.0 || (1.0 - alpha - beta) < 0.0)
+		{
+			//std::cout << "Outside tri" << std::endl;
+			continue;
+		}
+		else if (t < hit_dist && t > eps)
 		{
 			hit_dist = t;
 			tri_idx = i;
-			u /= sqr_normal;
-			v /= sqr_normal;
+			u = alpha;
+			v = beta;
 		}
 	}
 	return tri_idx > -1;
@@ -185,8 +183,7 @@ bool intersect_sphere(Ray& ray, double& hit_dist, int& sph_idx)
 	for (int i = 0; i < num_spheres; i++)
 	{
 		Sphere sph = spheres[i];
-		glm::dvec3 center = glm::dvec3(sph.position[0], sph.position[1], sph.position[2]);
-		glm::vec3 dist = ray.src - center;
+		glm::vec3 dist = ray.src - sph.position;
 		double coeff_a = pow(ray.dir.x, 2) + pow(ray.dir.y, 2) + pow(ray.dir.z, 2);
 		double coeff_b = 2 * (ray.dir.x * dist.x + ray.dir.y * dist.y + ray.dir.z * dist.z);
 		double coeff_c = glm::dot(dist, dist) - pow(sph.radius, 2);
@@ -205,21 +202,23 @@ bool intersect_sphere(Ray& ray, double& hit_dist, int& sph_idx)
 	return sph_idx > -1;
 }
 
-// to-do
-
-glm::vec3 shading(glm::dvec3 hit_point, const Light& light)
+glm::dvec3 calc_phong(const Vertex& hit_point, const Light& light)
 {
-	// if shadow ray didnt hit anything: return phong color
-	// if shadow ray hits a triangle or sphere: return black color
-	return black_col;
+	glm::dvec3 n = (hit_point.normal);
+	glm::dvec3 l = glm::normalize(light.position - hit_point.position);
+	glm::dvec3 v = glm::normalize(hit_point.position - cam_pos);
+	glm::dvec3 r = 2.0 * glm::dot(l, n) * n - l;
+	glm::dvec3 I = light.color * (std::max(glm::dot(l, n), 0.0) * hit_point.color_diffuse
+		+ pow(std::max(glm::dot(r, v), 0.0), hit_point.shininess) * hit_point.color_specular);
+	return I;
 }
 
 bool is_in_shadow(const Light& light, const Vertex& hit_point)
 {
 	double hit_dist_sph, hit_dist_tri, u, v;
 	int sph_idx, tri_idx;
-	glm::dvec3 light_pos; convert_array_to_dvec3(light.position, light_pos);
-	glm::dvec3 hit_pos; convert_array_to_dvec3(hit_point.position, hit_pos);
+	glm::dvec3 light_pos = (light.position);
+	glm::dvec3 hit_pos = (hit_point.position);
 	glm::dvec3 shadow_dir = glm::normalize(light_pos - hit_pos);
 	Ray shadow_ray = { hit_pos, shadow_dir };
 	bool hit_triangle = intersect_triangle(shadow_ray, hit_dist_tri, tri_idx, u, v);
@@ -227,19 +226,19 @@ bool is_in_shadow(const Light& light, const Vertex& hit_point)
 	// if not in shadow
 	if (!hit_triangle && !hit_sphere)
 		return false;
-	// if in shadow
-	glm::dvec3 shadow_hit_pos;
-	if ((hit_sphere && !hit_triangle)
-		|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri))
-	{
-		shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_sph;
-	}
-	else
-	{
-		shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_tri;
-	}
-	if (glm::length(hit_pos - light_pos) - glm::length(hit_pos - shadow_hit_pos) > eps)
-		return false;
+	//// if in shadow
+	//glm::dvec3 shadow_hit_pos;
+	//if ((hit_sphere && !hit_triangle)
+	//	|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri))
+	//{
+	//	shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_sph;
+	//}
+	//else
+	//{
+	//	shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_tri;
+	//}
+	/*if (glm::length(hit_pos - light_pos) - glm::length(hit_pos - shadow_hit_pos) > eps)
+		return false;*/
 	return true;
 }
 
@@ -258,62 +257,41 @@ glm::dvec3 calc_color(Ray& ray)
 	else if ((hit_sphere && !hit_triangle)
 		|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri)) // hit sphere first
 	{
+		std::cout << "Hit a sphere" << std::endl;
 		intersected_sph = spheres[sph_idx];
 		glm::dvec3 sph_pos = glm::dvec3(intersected_sph.position[0],
 			intersected_sph.position[1],
 			intersected_sph.position[2]);
-		// position
-		glm::dvec3 hit_pos = ray.src + ray.dir * hit_dist_sph;
-		hit.position[0] = hit_pos.x;
-		hit.position[1] = hit_pos.y;
-		hit.position[2] = hit_pos.z;
-		// normal
-		glm::dvec3 hit_normal = glm::normalize(hit_pos - sph_pos);
-		hit.normal[0] = hit_normal.x;
-		hit.normal[1] = hit_normal.y;
-		hit.normal[2] = hit_normal.z;
-		// diffuse
-		hit.color_diffuse[0] = intersected_sph.color_diffuse[0];
-		hit.color_diffuse[1] = intersected_sph.color_diffuse[1];
-		hit.color_diffuse[2] = intersected_sph.color_diffuse[2];
-		// specular
-		hit.color_specular[0] = intersected_sph.color_specular[0];
-		hit.color_specular[1] = intersected_sph.color_specular[1];
-		hit.color_specular[2] = intersected_sph.color_specular[2];
-		// shininess
-		hit.shininess = intersected_sph.shininess;
-		hit.shininess = intersected_sph.shininess;
+		hit.position = ray.src + ray.dir * hit_dist_sph;
+		hit.normal = glm::normalize(hit.position - sph_pos);
+		hit.color_diffuse = intersected_sph.color_diffuse;
+		hit.color_specular = intersected_sph.color_specular;
 		hit.shininess = intersected_sph.shininess;
 	}
 	else if (!hit_sphere && hit_triangle
 		|| (hit_triangle && hit_sphere && hit_dist_tri < hit_dist_sph))
 	{
+		// std::cout << "Hit a triangle" << std::endl;
 		intersected_tri = triangles[tri_idx];
-		glm::dvec3 hit_pos = ray.src + ray.dir * hit_dist_tri;
 		Vertex point_a = intersected_tri.v[0];
 		Vertex point_b = intersected_tri.v[1];
 		Vertex point_c = intersected_tri.v[2];
-		// position
-		hit.position[0] = hit_pos.x;
-		hit.position[1] = hit_pos.y;
-		hit.position[2] = hit_pos.z;
-		// normal: use u and v
-		hit.normal[0] = point_a.normal[0] * u + point_b.normal[0] * v + point_c.normal[0] * (1.0 - u - v);
-		hit.normal[1] = point_a.normal[1] * u + point_b.normal[1] * v + point_c.normal[1] * (1.0 - u - v);
-		hit.normal[2] = point_a.normal[2] * u + point_b.normal[2] * v + point_c.normal[2] * (1.0 - u - v);
-		// diffuse
-		hit.color_diffuse[0] = point_a.color_diffuse[0] * u + point_b.color_diffuse[0] * v + point_c.color_diffuse[0] * (1.0 - u - v);
-		hit.color_diffuse[1] = point_a.color_diffuse[1] * u + point_b.color_diffuse[1] * v + point_c.color_diffuse[1] * (1.0 - u - v);
-		hit.color_diffuse[2] = point_a.color_diffuse[2] * u + point_b.color_diffuse[2] * v + point_c.color_diffuse[2] * (1.0 - u - v);
-		// specular
-		hit.color_specular[0] = point_a.color_specular[0] * u + point_b.color_specular[0] * v + point_c.color_specular[0] * (1.0 - u - v);
-		hit.color_specular[1] = point_a.color_specular[1] * u + point_b.color_specular[1] * v + point_c.color_specular[1] * (1.0 - u - v);
-		hit.color_specular[2] = point_a.color_specular[2] * u + point_b.color_specular[2] * v + point_c.color_specular[2] * (1.0 - u - v);
-		// shininess
+		hit.position = ray.src + ray.dir * hit_dist_tri;
+		hit.normal = point_a.normal * u + point_b.normal * v + point_c.normal * (1.0 - u - v);
+		hit.color_diffuse = point_a.color_diffuse * u + point_b.color_diffuse * v + point_c.color_diffuse * (1.0 - u - v);
+		hit.color_specular = point_a.color_specular * u + point_b.color_specular * v + point_c.color_specular * (1.0 - u - v);
 		hit.shininess = point_a.shininess * u + point_b.shininess * v + point_c.shininess * (1.0 - u - v);
 	}
 
-	return glm::dvec3(0.0, 0.0, 0.0);
+	glm::dvec3 color = glm::dvec3(0.0, 0.0, 0.0);
+	for (int i = 0; i < num_lights; i++) // accumulate all light
+	{
+		if (!is_in_shadow(lights[i], hit))
+		{
+			color = color + calc_phong(hit, lights[i]);
+		}
+	}
+	return color;
 }
 
 //MODIFY THIS FUNCTION
@@ -339,14 +317,13 @@ void draw_scene()
 		glBegin(GL_POINTS);
 		for (unsigned int y = 0; y < HEIGHT; y++)
 		{
-			glm::dvec3 amb_vec = glm::dvec3(ambient_light[0], ambient_light[1], ambient_light[2]);
 			// init rays
 			Ray ray;
 			ray.src = glm::dvec3(0.0, 0.0, 0.0);
 			double pixel_x = min_x + x * c_width + c_width / 2.0;
 			double pixel_y = min_y + y * c_height + c_height / 2.0;
 			ray.dir = glm::normalize(glm::dvec3(pixel_x, pixel_y, -1.0));
-			glm::dvec3 col = calc_color(ray) + amb_vec;
+			glm::dvec3 col = calc_color(ray) + ambient_light;
 			plot_pixel(x, y,
 				static_cast<int>(col.x * 255),
 				static_cast<int>(col.y * 255),
@@ -399,13 +376,13 @@ void parse_check(const char* expected, char* found)
 	}
 }
 
-void parse_doubles(FILE* file, const char* check, double p[3])
+void parse_doubles(FILE* file, const char* check, glm::dvec3& p)
 {
 	char str[100];
 	fscanf(file, "%s", str);
 	parse_check(check, str);
-	fscanf(file, "%lf %lf %lf", &p[0], &p[1], &p[2]);
-	printf("%s %lf %lf %lf\n", check, p[0], p[1], p[2]);
+	fscanf(file, "%lf %lf %lf", &p.x, &p.y, &p.z);
+	printf("%s %lf %lf %lf\n", check, p.x, p.y, p.z);
 }
 
 void parse_rad(FILE* file, double* r)
