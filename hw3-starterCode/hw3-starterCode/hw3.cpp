@@ -50,11 +50,12 @@ int mode = MODE_DISPLAY;
 //the field of view of the camera
 #define fov 60.0
 #define PI 3.14159
-#define eps 0.00001
+#define eps 0.0000001
 
 unsigned char buffer[HEIGHT][WIDTH][3];
 double min_x, min_y;
 double c_width, c_height;
+bool found_sph = false;
 
 struct Vertex
 {
@@ -95,7 +96,7 @@ Triangle triangles[MAX_TRIANGLES];
 Sphere spheres[MAX_SPHERES];
 Light lights[MAX_LIGHTS];
 glm::dvec3 ambient_light;
-glm::dvec3 black_col = glm::dvec3(0.0, 0.0, 0.0);
+glm::dvec3 bg_color = glm::dvec3(1.0, 1.0, 1.0);
 glm::dvec3 cam_pos = glm::dvec3(0.0, 0.0, 0.0);
 int num_triangles = 0;
 int num_spheres = 0;
@@ -108,7 +109,6 @@ void plot_pixel(int x, int y, unsigned char r, unsigned char g, unsigned char b)
 bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, double& v, double& w)
 {
 	// get intersection
-	// test point inside triangle: project 3D to 2D and use baycentric coordinate in 2D
 	hit_dist = std::numeric_limits<double>::max();
 	tri_idx = -1;
 	for (int i = 0; i < num_triangles; i++)
@@ -121,12 +121,12 @@ bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, dou
 		glm::dvec3 ac = pos_c - pos_a;
 		glm::dvec3 plane = glm::cross(ray.dir, ac);
 		double det = glm::dot(ab, plane);
-
-		if (det < eps) continue;
+		if (abs(det) < eps) continue;
 
 		double inverse_det = 1.0 / det;
 		glm::dvec3 t_vec = ray.src - pos_a;
 		double alpha = inverse_det * glm::dot(t_vec, plane);
+
 		if (alpha < 0.0 || alpha > 1.0) continue;
 
 		glm::dvec3 q_vec = glm::cross(t_vec, ab);
@@ -139,8 +139,9 @@ bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, dou
 		double t = inverse_det * glm::dot(ac, q_vec);
 
 		// outside of triangle
+		if (t < eps) continue;
 		if (alpha < 0.0 || beta < 0.0 || gamma < 0.0) continue; // outside of triangle
-		else if (t < hit_dist && t > eps)
+		else if (t < hit_dist)
 		{
 			hit_dist = t;
 			tri_idx = i;
@@ -149,7 +150,7 @@ bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, dou
 			w = gamma;
 		}
 	}
-	return tri_idx > -1;
+	return tri_idx != -1;
 }
 
 bool intersect_sphere(Ray& ray, double& hit_dist, int& sph_idx)
@@ -160,15 +161,15 @@ bool intersect_sphere(Ray& ray, double& hit_dist, int& sph_idx)
 	for (int i = 0; i < num_spheres; i++)
 	{
 		Sphere sph = spheres[i];
-		glm::vec3 dist = ray.src - sph.position;
-		double coeff_a = pow(ray.dir.x, 2) + pow(ray.dir.y, 2) + pow(ray.dir.z, 2);
-		double coeff_b = 2 * (ray.dir.x * dist.x + ray.dir.y * dist.y + ray.dir.z * dist.z);
-		double coeff_c = glm::dot(dist, dist) - pow(sph.radius, 2);
-		double det = pow(coeff_b, 2) - 4 * coeff_c;
+		glm::dvec3 dist = ray.src - sph.position;
+		double coeff_a = glm::dot(ray.dir, ray.dir);
+		double coeff_b = 2 * glm::dot(ray.dir, dist);
+		double coeff_c = glm::dot(dist, dist) - sph.radius * sph.radius;
+		double det = coeff_b * coeff_b - 4 * coeff_c;
 		if (det < 0.0) // ignore
 			continue;
-		double t0 = (-coeff_b + sqrt(det)) / 2.0;
-		double t1 = (-coeff_b - sqrt(det)) / 2.0;
+		double t0 = (-coeff_b + sqrt(det)) * 0.5;
+		double t1 = (-coeff_b - sqrt(det)) * 0.5;
 		double result = std::min(t0, t1);
 		if (result > eps && result < hit_dist)
 		{
@@ -176,7 +177,7 @@ bool intersect_sphere(Ray& ray, double& hit_dist, int& sph_idx)
 			sph_idx = i;
 		}
 	}
-	return sph_idx > -1;
+	return sph_idx != -1;
 }
 
 glm::dvec3 calc_phong(const Vertex& hit_point, const Light& light)
@@ -184,7 +185,7 @@ glm::dvec3 calc_phong(const Vertex& hit_point, const Light& light)
 	glm::dvec3 n = hit_point.normal;
 	glm::dvec3 l = glm::normalize(light.position - hit_point.position);
 	glm::dvec3 v = glm::normalize(hit_point.position - cam_pos);
-	glm::dvec3 r = 2.0 * glm::dot(l, n) * n - l;
+	glm::dvec3 r = glm::normalize(l - 2.0 * glm::dot(l, n) * n);
 	double diffuse_coeff = std::max(glm::dot(l, n), 0.0);
 	double specular_coeff = pow(std::max(glm::dot(r, v), 0.0), hit_point.shininess);
 	glm::dvec3 I = light.color * (diffuse_coeff * hit_point.color_diffuse + specular_coeff * hit_point.color_specular);
@@ -198,7 +199,7 @@ bool is_in_shadow(const Light& light, const Vertex& hit_point)
 	glm::dvec3 light_pos = (light.position);
 	glm::dvec3 hit_pos = (hit_point.position);
 	glm::dvec3 shadow_dir = glm::normalize(light_pos - hit_pos);
-	Ray shadow_ray = { hit_pos, shadow_dir };
+	Ray shadow_ray = { hit_pos , shadow_dir };
 	bool hit_triangle = intersect_triangle(shadow_ray, hit_dist_tri, tri_idx, u, v, w);
 	bool hit_sphere = intersect_sphere(shadow_ray, hit_dist_sph, sph_idx);
 	// if not in shadow
@@ -206,19 +207,23 @@ bool is_in_shadow(const Light& light, const Vertex& hit_point)
 	{
 		return false;
 	}
-	//// if in shadow
-	//glm::dvec3 shadow_hit_pos;
-	//if ((hit_sphere && !hit_triangle)
-	//	|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri))
-	//{
-	//	shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_sph;
-	//}
-	//else
-	//{
-	//	shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_tri;
-	//}
-	//if (glm::dot(hit_pos - shadow_hit_pos, hit_pos - shadow_hit_pos) - glm::dot(hit_pos - light_pos, hit_pos - light_pos) > eps)
-	//	return false;
+	glm::dvec3 shadow_hit_pos;
+	if ((hit_sphere && !hit_triangle)
+		|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri))
+	{
+		shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_sph;
+	}
+	else
+	{
+		shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_tri;
+	}
+	double len_1 = glm::length(hit_pos - shadow_hit_pos);
+	double len_2 = glm::length(hit_pos - light_pos);
+	if (len_1 - len_2 > eps)
+	{
+		// std::cout << "False 2" << std::endl;
+		return false;
+	}
 	return true;
 }
 
@@ -229,15 +234,17 @@ glm::dvec3 calc_color(Ray& ray)
 	double u, v, w;
 	bool hit_sphere = intersect_sphere(ray, hit_dist_sph, sph_idx);
 	bool hit_triangle = intersect_triangle(ray, hit_dist_tri, tri_idx, u, v, w);
+	bool on_tri = false;
 	Vertex hit;
 	Sphere intersected_sph;
 	Triangle intersected_tri;
 	if (!hit_sphere && !hit_triangle)
-		return black_col;
+		return bg_color;
 	else if ((hit_sphere && !hit_triangle)
 		|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri)) // hit sphere first
 	{
 		//std::cout << "Hit a sphere" << std::endl;
+		found_sph = true;
 		intersected_sph = spheres[sph_idx];
 		hit.position = ray.src + ray.dir * hit_dist_sph;
 		double length = glm::length(hit.position - intersected_sph.position);
@@ -248,7 +255,6 @@ glm::dvec3 calc_color(Ray& ray)
 	}
 	else
 	{
-		// std::cout << "Hit a triangle" << std::endl;
 		intersected_tri = triangles[tri_idx];
 		Vertex point_a = intersected_tri.v[0];
 		Vertex point_b = intersected_tri.v[1];
@@ -259,8 +265,7 @@ glm::dvec3 calc_color(Ray& ray)
 		hit.color_specular = point_a.color_specular * u + point_b.color_specular * v + point_c.color_specular * w;
 		hit.shininess = point_a.shininess * u + point_b.shininess * v + point_c.shininess * w;
 	}
-
-	glm::dvec3 color = black_col;
+	glm::dvec3 color = glm::dvec3(0.0, 0.0, 0.0);
 	for (int i = 0; i < num_lights; i++) // accumulate all light
 	{
 		if (!is_in_shadow(lights[i], hit))
@@ -301,6 +306,9 @@ void draw_scene()
 			double pixel_y = min_y + y * c_height + c_height / 2.0;
 			ray.dir = glm::normalize(glm::dvec3(pixel_x, pixel_y, -1.0));
 			glm::dvec3 col = calc_color(ray) + ambient_light;
+			if (col.x > 1.0) col.x = 1.0;
+			if (col.y > 1.0) col.y = 1.0;
+			if (col.z > 1.0) col.z = 1.0;
 			plot_pixel(x, y,
 				static_cast<int>(col.x * 255),
 				static_cast<int>(col.y * 255),
