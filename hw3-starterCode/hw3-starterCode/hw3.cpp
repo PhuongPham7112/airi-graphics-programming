@@ -124,7 +124,7 @@ bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, dou
 		double check_paral = glm::dot(normal, ray.dir);
 		if (abs(check_paral) < eps) // ray parallel to plane
 		{
-			std::cout << "Parallel with ray" << std::endl;
+			//std::cout << "Parallel with ray" << std::endl;
 			continue;
 		}
 		// find intersectional point
@@ -132,47 +132,45 @@ bool intersect_triangle(Ray& ray, double& hit_dist, int& tri_idx, double& u, dou
 		double t = -(glm::dot(normal, ray.src) + coeff_d) / (check_paral);
 		if (t < eps)
 		{
-			std::cout << "Too small dist : " << t << std::endl;
+			// std::cout << "Too small dist : " << t << std::endl;
 			continue;
 		}
 		glm::dvec3 intersect = ray.src + ray.dir * t;
-		// test inside-outside test: barycentric interpolation
-		//glm::dvec3 xy_plane = glm::dvec3(1.0, 1.0, 0.0);
-		//glm::dvec3 yz_plane = glm::dvec3(0.0, 1.0, 1.0);
-		//glm::dvec3 zx_plane = glm::dvec3(1.0, 0.0, 1.0);
-		//double proj_xy = glm::dot(xy_plane, normal);
-		//double tri_area, pbc_area, pca_area, pab_area;
-		//if (glm::dot(xy_plane, normal) != 0.0) // project on xy plane
-		//{
-		//	tri_area = 0.5 * ((pos_b.x - pos_a.x) * (pos_c.y - pos_a.y) - (pos_c.x - pos_a.x) * (pos_b.y - pos_a.y));
-		//	pbc_area = 0.5 * ((pos_b.x - intersect.x) * (pos_c.y - intersect.y) - (pos_c.x - intersect.x) * (pos_b.y - intersect.y));
-		//	pca_area = 0.5 * ((pos_a.x - intersect.x) * (pos_c.y - intersect.y) - (pos_c.x - intersect.x) * (pos_a.y - intersect.y));
-		//	pab_area = 0.5 * ((pos_b.x - intersect.x) * (pos_a.y - intersect.y) - (pos_a.x - intersect.x) * (pos_b.y - intersect.y));
-		//}
-		//else if (glm::dot(yz_plane, normal) != 0.0) // project on yz plane
-		//{
-		//	tri_area = 0.5 * ((pos_b.y - pos_a.y) * (pos_c.z - pos_a.z) - (pos_c.y - pos_a.y) * (pos_b.z - pos_a.z));
-		//	pbc_area = 0.5 * ((pos_b.y - intersect.y) * (pos_c.z - intersect.z) - (pos_c.y - intersect.y) * (pos_b.z - intersect.z));
-		//	pca_area = 0.5 * ((pos_a.y - intersect.y) * (pos_c.z - intersect.z) - (pos_c.y - intersect.y) * (pos_a.z - intersect.z));
-		//	pab_area = 0.5 * ((pos_b.y - intersect.y) * (pos_a.z - intersect.z) - (pos_a.y - intersect.y) * (pos_b.z - intersect.z));
-		//}
-		//else if (glm::dot(zx_plane, normal) != 0.0) // project on zx plane
-		//{
-		//	tri_area = 0.5 * ((pos_b.z - pos_a.z) * (pos_c.x - pos_a.x) - (pos_c.z - pos_a.z) * (pos_b.x - pos_a.x));
-		//	pbc_area = 0.5 * ((pos_b.z - intersect.z) * (pos_c.x - intersect.x) - (pos_c.z - intersect.z) * (pos_b.x - intersect.x));
-		//	pca_area = 0.5 * ((pos_a.z - intersect.z) * (pos_c.x - intersect.x) - (pos_c.z - intersect.z) * (pos_a.x - intersect.x));
-		//	pab_area = 0.5 * ((pos_b.z - intersect.z) * (pos_a.x - intersect.x) - (pos_a.z - intersect.z) * (pos_b.x - intersect.x));
-		//}
-		//if (tri_area == 0.0)
-		//	continue;
 
-		//double alpha = pbc_area / tri_area;
-		//double beta = pca_area / tri_area;
-		double sqr_normal = glm::dot(normal, normal);
-		if (abs(sqr_normal) < eps) continue;
-		double alpha = glm::dot(normal, glm::cross(ab, intersect - pos_a)) / sqr_normal;
-		double beta = glm::dot(normal, glm::cross(bc, intersect - pos_b)) / sqr_normal;
-		double gamma = glm::dot(normal, glm::cross(ca, intersect - pos_c)) / sqr_normal;
+		// test inside-outside test: barycentric interpolation
+		glm::dvec3 xy_plane = glm::dvec3(1.0, 1.0, 0.0);
+		glm::dvec3 yz_plane = glm::dvec3(0.0, 1.0, 1.0);
+		glm::dvec3 zx_plane = glm::dvec3(1.0, 0.0, 1.0);
+		double proj_xy = glm::dot(xy_plane, normal);
+		double tri_area, pbc_area, pca_area, pab_area;
+		if (glm::dot(xy_plane, normal) != 0.0) // project on xy plane
+		{
+			tri_area = 0.5 * ((pos_b.x - pos_a.x) * (pos_c.y - pos_a.y) - (pos_c.x - pos_a.x) * (pos_b.y - pos_a.y));
+			pbc_area = 0.5 * ((pos_b.x - intersect.x) * (pos_c.y - intersect.y) - (pos_c.x - intersect.x) * (pos_b.y - intersect.y));
+			pca_area = 0.5 * ((pos_a.x - intersect.x) * (pos_c.y - intersect.y) - (pos_c.x - intersect.x) * (pos_a.y - intersect.y));
+			pab_area = 0.5 * ((pos_b.x - intersect.x) * (pos_a.y - intersect.y) - (pos_a.x - intersect.x) * (pos_b.y - intersect.y));
+		}
+		else if (glm::dot(yz_plane, normal) != 0.0) // project on yz plane
+		{
+			tri_area = 0.5 * ((pos_b.y - pos_a.y) * (pos_c.z - pos_a.z) - (pos_c.y - pos_a.y) * (pos_b.z - pos_a.z));
+			pbc_area = 0.5 * ((pos_b.y - intersect.y) * (pos_c.z - intersect.z) - (pos_c.y - intersect.y) * (pos_b.z - intersect.z));
+			pca_area = 0.5 * ((pos_a.y - intersect.y) * (pos_c.z - intersect.z) - (pos_c.y - intersect.y) * (pos_a.z - intersect.z));
+			pab_area = 0.5 * ((pos_b.y - intersect.y) * (pos_a.z - intersect.z) - (pos_a.y - intersect.y) * (pos_b.z - intersect.z));
+		}
+		else if (glm::dot(zx_plane, normal) != 0.0) // project on zx plane
+		{
+			tri_area = 0.5 * ((pos_b.z - pos_a.z) * (pos_c.x - pos_a.x) - (pos_c.z - pos_a.z) * (pos_b.x - pos_a.x));
+			pbc_area = 0.5 * ((pos_b.z - intersect.z) * (pos_c.x - intersect.x) - (pos_c.z - intersect.z) * (pos_b.x - intersect.x));
+			pca_area = 0.5 * ((pos_a.z - intersect.z) * (pos_c.x - intersect.x) - (pos_c.z - intersect.z) * (pos_a.x - intersect.x));
+			pab_area = 0.5 * ((pos_b.z - intersect.z) * (pos_a.x - intersect.x) - (pos_a.z - intersect.z) * (pos_b.x - intersect.x));
+		}
+		if (tri_area < eps)
+			continue;
+
+		double alpha = pbc_area / tri_area;
+		double beta = pca_area / tri_area;
+		double gamma = pab_area / tri_area;
+
 		// outside of triangle
 		if (alpha < 0.0 || beta < 0.0 || gamma < 0.0) continue; // outside of triangle
 		else if (t < hit_dist && t > eps)
@@ -198,11 +196,11 @@ bool intersect_sphere(Ray& ray, double& hit_dist, int& sph_idx)
 		double coeff_a = pow(ray.dir.x, 2) + pow(ray.dir.y, 2) + pow(ray.dir.z, 2);
 		double coeff_b = 2 * (ray.dir.x * dist.x + ray.dir.y * dist.y + ray.dir.z * dist.z);
 		double coeff_c = glm::dot(dist, dist) - pow(sph.radius, 2);
-		double delta = pow(coeff_b, 2) - 4 * coeff_c;
-		if (delta < 0.0) // ignore
+		double det = pow(coeff_b, 2) - 4 * coeff_c;
+		if (det < 0.0) // ignore
 			continue;
-		double t0 = (-coeff_b + sqrt(delta)) / 2.0;
-		double t1 = (-coeff_b - sqrt(delta)) / 2.0;
+		double t0 = (-coeff_b + sqrt(det)) / 2.0;
+		double t1 = (-coeff_b - sqrt(det)) / 2.0;
 		double result = std::min(t0, t1);
 		if (result > eps && result < hit_dist)
 		{
@@ -240,19 +238,19 @@ bool is_in_shadow(const Light& light, const Vertex& hit_point)
 	{
 		return false;
 	}
-	//// if in shadow
-	//glm::dvec3 shadow_hit_pos;
-	//if ((hit_sphere && !hit_triangle)
-	//	|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri))
-	//{
-	//	shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_sph;
-	//}
-	//else
-	//{
-	//	shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_tri;
-	//}
-	/*if (glm::length(hit_pos - light_pos) - glm::length(hit_pos - shadow_hit_pos) > eps)
-		return false;*/
+	// if in shadow
+	glm::dvec3 shadow_hit_pos;
+	if ((hit_sphere && !hit_triangle)
+		|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri))
+	{
+		shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_sph;
+	}
+	else
+	{
+		shadow_hit_pos = shadow_ray.src + shadow_ray.dir * hit_dist_tri;
+	}
+	if (glm::dot(hit_pos - shadow_hit_pos, hit_pos - shadow_hit_pos) - glm::dot(hit_pos - light_pos, hit_pos - light_pos) > eps)
+		return false;
 	return true;
 }
 
@@ -271,20 +269,18 @@ glm::dvec3 calc_color(Ray& ray)
 	else if ((hit_sphere && !hit_triangle)
 		|| (hit_sphere && hit_triangle && hit_dist_sph < hit_dist_tri)) // hit sphere first
 	{
+		//std::cout << "Hit a sphere" << std::endl;
 		intersected_sph = spheres[sph_idx];
-		glm::dvec3 sph_pos = glm::dvec3(intersected_sph.position[0],
-			intersected_sph.position[1],
-			intersected_sph.position[2]);
 		hit.position = ray.src + ray.dir * hit_dist_sph;
-		hit.normal = glm::normalize(hit.position - sph_pos);
-		// std::cout << "Sph Normal: " << hit.normal.x << " " << hit.normal.y << " " << hit.normal.z << std::endl;
+		double length = glm::length(hit.position - intersected_sph.position);
+		hit.normal = glm::normalize((1.0 / intersected_sph.radius) * (hit.position - intersected_sph.position));
 		hit.color_diffuse = intersected_sph.color_diffuse;
 		hit.color_specular = intersected_sph.color_specular;
 		hit.shininess = intersected_sph.shininess;
 	}
 	else
 	{
-		std::cout << "Hit a triangle" << std::endl;
+		// std::cout << "Hit a triangle" << std::endl;
 		intersected_tri = triangles[tri_idx];
 		Vertex point_a = intersected_tri.v[0];
 		Vertex point_b = intersected_tri.v[1];
@@ -312,7 +308,7 @@ void init_scene()
 {
 	double asp = (double)WIDTH / (double)HEIGHT;
 	double rad_fov = fov * PI / 180.0;
-	double y = tan(rad_fov / 2.0);
+	double y = tan(rad_fov * 0.5);
 	min_x = -asp * y;
 	min_y = -y;
 	c_width = (2.0 * asp * y) / WIDTH;
