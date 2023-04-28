@@ -163,7 +163,7 @@ bool intersect_sphere(Ray& ray, double& hit_dist, int& sph_idx)
 		Sphere sph = spheres[i];
 		glm::dvec3 dist = ray.src - sph.position;
 		double coeff_a = glm::dot(ray.dir, ray.dir);
-		double coeff_b = 2 * glm::dot(ray.dir, dist);
+		double coeff_b = 2.0 * glm::dot(ray.dir, dist);
 		double coeff_c = glm::dot(dist, dist) - sph.radius * sph.radius;
 		double det = coeff_b * coeff_b - 4 * coeff_c;
 		if (det < 0.0) // ignore
@@ -221,7 +221,6 @@ bool is_in_shadow(const Light& light, const Vertex& hit_point)
 	double len_2 = glm::length(hit_pos - light_pos);
 	if (len_1 - len_2 > eps)
 	{
-		// std::cout << "False 2" << std::endl;
 		return false;
 	}
 	return true;
