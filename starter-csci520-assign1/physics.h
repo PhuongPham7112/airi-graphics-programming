@@ -9,6 +9,8 @@
 #define _PHYSICS_H_
 
 void computeAcceleration(struct world * jello, struct point a[8][8][8]);
+point HookLaw(double kHook, double restLength, point A, point B);
+point Damping(double kDamp, point A, point B, point velA, point velB);
 
 // perform one step of Euler and Runge-Kutta-4th-order integrators
 // updates the jello structure accordingly

@@ -7,6 +7,7 @@
 
 #include "jello.h"
 #include "physics.h"
+#include <vector>
 
 /* Computes acceleration to every control point of the jello cube, 
    which is in state given by 'jello'.
@@ -14,6 +15,92 @@
 void computeAcceleration(struct world * jello, struct point a[8][8][8])
 {
   /* for you to implement ... */
+    int maxIdx = 7;
+    int minIdx = 0;
+    for (int i = 0; i <= maxIdx; i++) {
+        for (int j = 0; j <= maxIdx; j++) {
+            for (int k = 0; k <= maxIdx; k++) {
+                // find structural neightbors: 6 immediate neighbors
+                std::vector<point> structNeighbors;
+                if (i > minIdx) structNeighbors.push_back(jello->p[i-1][j][k]);
+                if (i < maxIdx) structNeighbors.push_back(jello->p[i+1][j][k]);
+                if (j > minIdx) structNeighbors.push_back(jello->p[i][j-1][k]);
+                if (j < maxIdx) structNeighbors.push_back(jello->p[i][j+1][k]);
+                if (k > minIdx) structNeighbors.push_back(jello->p[i][j][k-1]);
+                if (k < maxIdx) structNeighbors.push_back(jello->p[i][j][k+1]);
+                // find shear neighbors: 
+                std::vector<point> shearNeighbors;
+                shearNeighbors.push_back(jello->p[i+1][j+1][k+1]);
+                shearNeighbors.push_back(jello->p[i+1][j+1][k-1]);
+                shearNeighbors.push_back(jello->p[i+1][j-1][k+1]);
+                shearNeighbors.push_back(jello->p[i+1][j-1][k-1]);
+                shearNeighbors.push_back(jello->p[i-1][j+1][k+1]);
+                shearNeighbors.push_back(jello->p[i-1][j+1][k-1]);
+                shearNeighbors.push_back(jello->p[i-1][j-1][k-1]);
+                shearNeighbors.push_back(jello->p[i-1][j-1][k+1]);
+                // find bending neighbors
+                std::vector<point> bendNeighbors;
+                if (i > minIdx + 1) bendNeighbors.push_back(jello->p[i - 2][j][k]);
+                if (i < maxIdx - 1) bendNeighbors.push_back(jello->p[i + 2][j][k]);
+                if (j > minIdx + 1) bendNeighbors.push_back(jello->p[i][j - 2][k]);
+                if (j < maxIdx - 1) bendNeighbors.push_back(jello->p[i][j + 2][k]);
+                if (k > minIdx + 1) bendNeighbors.push_back(jello->p[i][j][k - 2]);
+                if (k < maxIdx - 1) bendNeighbors.push_back(jello->p[i][j][k + 2]);
+                // calculate hook force of shear, structural, and bend
+                point fHook;
+                pMAKE(0.0, 0.0, 0.0, fHook);
+                // calculate damp force of shear, structural, and bend
+                point fDamp;
+                pMAKE(0.0, 0.0, 0.0, fDamp);
+                // calculate external force
+                point fExtern;
+                pMAKE(0.0, 0.0, 0.0, fExtern);
+
+                point fTotal;
+                pMAKE(0.0, 0.0, 0.0, fTotal);
+                pSUM(fTotal, fHook, fTotal);
+                pSUM(fTotal, fDamp, fTotal);
+                pSUM(fTotal, fExtern, fTotal);
+
+                // a = F / m
+                //pDIVIDE(fTotal, jello->mass, a);
+            }
+        }
+    }
+}
+
+point HookLaw(double kHook, double restLength, point A, point B) {
+    point vec;
+    pDIFFERENCE(A, B, vec);
+    double length;
+    pNORMALIZE(vec);
+    pMULTIPLY(vec, -kHook * (length - restLength), vec);
+    return vec;
+}
+
+point Damping(double kDamp, point A, point B, point velA, point velB) {
+    point L; // a - b = L
+    pDIFFERENCE(A, B, L);
+
+    point velDiff; // vel a - vel b
+    pDIFFERENCE(velA, velB, velDiff);
+
+    point product;
+    DOTPRODUCTp(L, velDiff, product);
+
+    double length;
+    pNORMALIZE(L);
+
+    point med1;
+    pDIVIDE(product, length, med1);
+
+    point med2;
+    DOTPRODUCTp(med1, L, med2);
+    
+    point fDamp;
+    pMULTIPLY(med2, kDamp, fDamp);
+
+    return fDamp;
 }
 
 /* performs one step of Euler Integration */

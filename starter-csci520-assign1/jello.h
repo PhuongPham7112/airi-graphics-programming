@@ -60,6 +60,8 @@ struct world
 
 extern struct world jello;
 
+double getLength(struct point p);
+
 // computes crossproduct of three vectors, which are given as points
 // struct point vector1, vector2, dest
 // result goes into dest
@@ -76,6 +78,17 @@ extern struct world jello;
   x = (y1) * (z2) - (y2) * (z1);\
   y = (x2) * (z1) - (x1) * (z2);\
   z = (x1) * (y2) - (x2) * (y1)
+
+#define DOTPRODUCTp(vector1, vector2, dest)\
+    DOTPRODUCT( (vector1).x, (vector1).y, (vector1).z,\
+                (vector2).x, (vector2).y, (vector2).z,\
+                (dest).x, (dest).y, (dest).z )
+
+#define DOTPRODUCT(x1,y1,z1,x2,y2,z2,x,y,z)\
+\
+  x = (x1) * (x2);\
+  y = (y1) * (y2);\
+  z = (z1) * (z2);
 
 // normalizes vector dest
 // struct point dest
@@ -100,11 +113,11 @@ extern struct world jello;
 // assigns values x,y,z to point vector dest
 // struct point dest
 // double x,y,z
-#define pMAKE(x,y,z,dest)\
+#define pMAKE(x1,y1,z1,dest)\
 \
-  (dest).(x) = (x);\
-  (dest).(y) = (y);\
-  (dest).(z) = (z);
+  (dest).x = (x1);\
+  (dest).y = (y1);\
+  (dest).z = (z1);
 
 // sums points src1 and src2 to dest
 // struct point src1,src2,dest
@@ -131,5 +144,10 @@ extern struct world jello;
   (dest).y = (src).y * (scalar);\
   (dest).z = (src).z * (scalar);
 
+#define pDIVIDE(src,scalar,dest)\
+\
+  (dest).x = (src).x / (scalar);\
+  (dest).y = (src).y / (scalar);\
+  (dest).z = (src).z / (scalar);
 #endif
 

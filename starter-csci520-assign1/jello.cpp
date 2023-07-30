@@ -196,6 +196,15 @@ void doIdle()
 {
   char s[20]="picxxxx.ppm";
   int i;
+
+  // move the cube
+  //for (int i = 0; i < 8; i++) {
+  //    for (int j = 0; j < 8; j++) {
+  //        for (int k = 0; k < 8; k++) {
+  //            jello.p[i][j][k].x += 0.0001;
+  //        }
+  //    }
+  //}
   
   // save screen to file
   s[3] = 48 + (sprite / 1000);
@@ -273,5 +282,9 @@ int main (int argc, char ** argv)
   glutMainLoop();
 
   return(0);
+}
+
+double getLength(struct point p) {
+    return sqrt((p).x * (p).x + (p).y * (p).y + (p).z * (p).z);
 }
 
