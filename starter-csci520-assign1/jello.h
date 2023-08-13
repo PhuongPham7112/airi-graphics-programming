@@ -15,6 +15,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 #define pi 3.141592653589793238462643383279 
 
@@ -35,6 +36,16 @@ struct point
    double x;
    double y;
    double z;
+   point(double in_x, double in_y, double in_z) : x(in_x), y(in_y), z(in_z) {}
+   point() : x(0.0), y(0.0), z(0.0) {}
+};
+
+struct indexStruct
+{
+    int x;
+    int y;
+    int z;
+    indexStruct(int in_x, int in_y, int in_z) : x(in_x), y(in_y), z(in_z) {}
 };
 
 // these variables control what is displayed on the screen
@@ -56,6 +67,8 @@ struct world
   struct point * forceField; // pointer to the array of values of the force field
   struct point p[8][8][8]; // position of the 512 control points
   struct point v[8][8][8]; // velocities of the 512 control points
+  struct point up[8][8][8]; // undeformed position of the 512 control points
+  std::vector<std::vector<struct point>> box;
 };
 
 extern struct world jello;

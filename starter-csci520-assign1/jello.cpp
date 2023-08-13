@@ -49,6 +49,52 @@ void myinit()
   glEnable(GL_POLYGON_SMOOTH);
   glEnable(GL_LINE_SMOOTH);
 
+  // init box
+  for (int face = 0; face < 4; face++) {
+      std::vector<point> side;
+      if (face == 0) {
+          // front face
+          for (int i = -2; i <= 2; i++)
+          {
+              side.push_back(point(i, -2, -2));
+              side.push_back(point(i, -2, 2));
+              side.push_back(point(-2, -2, i));
+              side.push_back(point(2, -2, i));
+          }
+      }
+      else if (face == 1) {
+          // back face
+          for (int i = -2; i <= 2; i++)
+          {
+              side.push_back(point(i, 2, -2));
+              side.push_back(point(i, 2, 2));
+              side.push_back(point(-2, 2, i));
+              side.push_back(point(2, 2, i));
+          }
+      }
+      else if (face == 2) {
+          // left face
+          for (int i = -2; i <= 2; i++)
+          {
+              side.push_back(point(-2, i, -2));
+              side.push_back(point(-2, i, 2));
+              side.push_back(point(-2, -2, i));
+              side.push_back(point(-2, 2, i));
+          }
+      }
+      else if (face == 3) {
+          // right face
+          for (int i = -2; i <= 2; i++)
+          {
+              side.push_back(point(2, i, -2));
+              side.push_back(point(2, i, 2));
+              side.push_back(point(2, -2, i));
+              side.push_back(point(2, 2, i));
+          }
+      }
+      jello.box.push_back(side);
+  }
+
   return; 
 }
 
@@ -197,14 +243,7 @@ void doIdle()
   char s[20]="picxxxx.ppm";
   int i;
 
-  // move the cube
-  //for (int i = 0; i < 8; i++) {
-  //    for (int j = 0; j < 8; j++) {
-  //        for (int k = 0; k < 8; k++) {
-  //            jello.p[i][j][k].x += 0.0001;
-  //        }
-  //    }
-  //}
+  RK4(&jello);
   
   // save screen to file
   s[3] = 48 + (sprite / 1000);

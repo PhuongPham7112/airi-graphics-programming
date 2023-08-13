@@ -100,9 +100,13 @@ void writeWorld(const char * fileName, struct world * jello)
   {
     for (j = 0; j <= 7; j++)
     {
-      for (k = 0; k <= 7; k++)
-        fprintf(file, "%lf %lf %lf\n", 
-          jello->p[i][j][k].x, jello->p[i][j][k].y, jello->p[i][j][k].z);
+        for (k = 0; k <= 7; k++) {
+            fprintf(file, "%lf %lf %lf\n",
+                jello->p[i][j][k].x, jello->p[i][j][k].y, jello->p[i][j][k].z);
+            jello->up[i][j][k].x = jello->p[i][j][k].x;
+            jello->up[i][j][k].y = jello->p[i][j][k].y;
+            jello->up[i][j][k].z = jello->p[i][j][k].z;
+        }
     }
   }
       

@@ -14,56 +14,91 @@
    Returns result in array 'a'. */
 void computeAcceleration(struct world * jello, struct point a[8][8][8])
 {
+  // 512 acceleration results for each point
+  // a_ith at point ith = (F hook at ith + F damp at ith + F ext at ith) / mass 
   /* for you to implement ... */
     int maxIdx = 7;
     int minIdx = 0;
     for (int i = 0; i <= maxIdx; i++) {
         for (int j = 0; j <= maxIdx; j++) {
-            for (int k = 0; k <= maxIdx; k++) {
+            for (int k = 0; k <= maxIdx; k++) { // at point [i][j][k]
+                point currentPoint = jello->p[i][j][k];
+                for (std::vector<point> face : jello->box) {
+                    for (point faceP : face) {
+
+                    }
+                }
+                point currentPointVelocity = jello->v[i][j][k];
+                std::vector<indexStruct> neighborIdx;
                 // find structural neightbors: 6 immediate neighbors
-                std::vector<point> structNeighbors;
-                if (i > minIdx) structNeighbors.push_back(jello->p[i-1][j][k]);
-                if (i < maxIdx) structNeighbors.push_back(jello->p[i+1][j][k]);
-                if (j > minIdx) structNeighbors.push_back(jello->p[i][j-1][k]);
-                if (j < maxIdx) structNeighbors.push_back(jello->p[i][j+1][k]);
-                if (k > minIdx) structNeighbors.push_back(jello->p[i][j][k-1]);
-                if (k < maxIdx) structNeighbors.push_back(jello->p[i][j][k+1]);
+                if (i > minIdx) neighborIdx.push_back(indexStruct(i - 1, j, k));
+                if (i < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j, k));
+                if (j > minIdx) neighborIdx.push_back(indexStruct(i, j - 1, k));
+                if (j < maxIdx) neighborIdx.push_back(indexStruct(i, j + 1, k));
+                if (k > minIdx) neighborIdx.push_back(indexStruct(i, j, k - 1));
+                if (k < maxIdx) neighborIdx.push_back(indexStruct(i, j, k + 1));
                 // find shear neighbors: 
-                std::vector<point> shearNeighbors;
-                shearNeighbors.push_back(jello->p[i+1][j+1][k+1]);
-                shearNeighbors.push_back(jello->p[i+1][j+1][k-1]);
-                shearNeighbors.push_back(jello->p[i+1][j-1][k+1]);
-                shearNeighbors.push_back(jello->p[i+1][j-1][k-1]);
-                shearNeighbors.push_back(jello->p[i-1][j+1][k+1]);
-                shearNeighbors.push_back(jello->p[i-1][j+1][k-1]);
-                shearNeighbors.push_back(jello->p[i-1][j-1][k-1]);
-                shearNeighbors.push_back(jello->p[i-1][j-1][k+1]);
+                // xy plane
+                if (i < maxIdx && j < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k));
+                if (i < maxIdx && j > minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k));
+                if (i > minIdx && j < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k));
+                if (i > minIdx && j > minIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k));
+                // yz plane
+                if (j < maxIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i, j + 1, k + 1));
+                if (j > minIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i, j - 1, k + 1));
+                if (j < maxIdx && k > minIdx) neighborIdx.push_back(indexStruct(i, j + 1, k - 1));
+                if (j > minIdx && k > minIdx) neighborIdx.push_back(indexStruct(i, j - 1, k - 1));
+                // xz plane
+                if (i < maxIdx && k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j, k - 1));
+                if (i < maxIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j, k + 1));
+                if (i > minIdx && k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j, k - 1));
+                if (i > minIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j, k + 1));
+                // diagonal
+                if (i < maxIdx && j < maxIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k + 1));
+                if (i < maxIdx && j < maxIdx && k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k - 1));
+                if (i < maxIdx && j > minIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k + 1));
+                if (i < maxIdx && j > minIdx && k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k - 1));
+                if (i > minIdx && j < maxIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k + 1));
+                if (i > minIdx && j < maxIdx && k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k - 1));
+                if (i > minIdx && j > minIdx && k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k - 1));
+                if (i > minIdx && j > minIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k + 1));
                 // find bending neighbors
-                std::vector<point> bendNeighbors;
-                if (i > minIdx + 1) bendNeighbors.push_back(jello->p[i - 2][j][k]);
-                if (i < maxIdx - 1) bendNeighbors.push_back(jello->p[i + 2][j][k]);
-                if (j > minIdx + 1) bendNeighbors.push_back(jello->p[i][j - 2][k]);
-                if (j < maxIdx - 1) bendNeighbors.push_back(jello->p[i][j + 2][k]);
-                if (k > minIdx + 1) bendNeighbors.push_back(jello->p[i][j][k - 2]);
-                if (k < maxIdx - 1) bendNeighbors.push_back(jello->p[i][j][k + 2]);
-                // calculate hook force of shear, structural, and bend
-                point fHook;
-                pMAKE(0.0, 0.0, 0.0, fHook);
-                // calculate damp force of shear, structural, and bend
-                point fDamp;
-                pMAKE(0.0, 0.0, 0.0, fDamp);
-                // calculate external force
-                point fExtern;
-                pMAKE(0.0, 0.0, 0.0, fExtern);
+                if (i > minIdx + 1) neighborIdx.push_back(indexStruct(i - 2, j, k));
+                if (i < maxIdx - 1) neighborIdx.push_back(indexStruct(i + 2, j, k));
+                if (j > minIdx + 1) neighborIdx.push_back(indexStruct(i, j - 2, k));
+                if (j < maxIdx - 1) neighborIdx.push_back(indexStruct(i, j + 2, k));
+                if (k > minIdx + 1) neighborIdx.push_back(indexStruct(i, j, k - 2));
+                if (k < maxIdx - 1) neighborIdx.push_back(indexStruct(i, j, k + 2));
+                
+                // find sum
+                for (indexStruct idx : neighborIdx) {
+                    point neighbor = jello->p[idx.x][idx.y][idx.z];
+                    point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
+                    double restLength = distance(jello->up[idx.x][idx.y][idx.z], jello->up[i][j][k]); // how to store rest length in undeformed state
 
-                point fTotal;
-                pMAKE(0.0, 0.0, 0.0, fTotal);
-                pSUM(fTotal, fHook, fTotal);
-                pSUM(fTotal, fDamp, fTotal);
-                pSUM(fTotal, fExtern, fTotal);
+                    // calculate hook force
+                    point fHook;
+                    point hook = HookLaw(jello->kElastic, restLength, neighbor, currentPoint);
+                    pSUM(fHook, hook, fHook);
 
-                // a = F / m
-                //pDIVIDE(fTotal, jello->mass, a);
+                    // calculate damp force
+                    point fDamp;
+                    point damp = Damping(jello->dElastic, neighbor, currentPoint, neighborVelocity, currentPointVelocity);
+                    pSUM(fDamp, damp, fDamp);
+
+                    // calculate external force
+                    point fExtern;
+
+                    // calculate total
+                    point fTotal;
+                    pMAKE(0.0, 0.0, 0.0, fTotal);
+                    pSUM(fTotal, fHook, fTotal);
+                    pSUM(fTotal, fDamp, fTotal);
+                    pSUM(fTotal, fExtern, fTotal);
+
+                    // a = F / m
+                    pDIVIDE(fTotal, jello->mass, a[i][j][k]);
+                }         
             }
         }
     }
@@ -101,6 +136,10 @@ point Damping(double kDamp, point A, point B, point velA, point velB) {
     pMULTIPLY(med2, kDamp, fDamp);
 
     return fDamp;
+}
+
+double distance(point A, point B) {
+    return sqrt(pow(A.x - B.x, 2) + pow(A.y - B.y, 2) + pow(A.z - B.z, 2));
 }
 
 /* performs one step of Euler Integration */
