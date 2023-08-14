@@ -49,52 +49,37 @@ void myinit()
   glEnable(GL_POLYGON_SMOOTH);
   glEnable(GL_LINE_SMOOTH);
 
-  // init box
+  // init bounding box planes
+  // plane struct: a, b, c, d, point on plane
   for (int face = 0; face < 4; face++) {
-      std::vector<point> side;
+      plane side;
+      double length;
       if (face == 0) {
           // front face
-          for (int i = -2; i <= 2; i++)
-          {
-              side.push_back(point(i, -2, -2));
-              side.push_back(point(i, -2, 2));
-              side.push_back(point(-2, -2, i));
-              side.push_back(point(2, -2, i));
-          }
+          side.pOnPlane = point(0, -2, -2);
+          pDIFFERENCE(point(0, -1, -2), side.pOnPlane, side.normal);
+          pNORMALIZE(side.normal);
       }
       else if (face == 1) {
           // back face
-          for (int i = -2; i <= 2; i++)
-          {
-              side.push_back(point(i, 2, -2));
-              side.push_back(point(i, 2, 2));
-              side.push_back(point(-2, 2, i));
-              side.push_back(point(2, 2, i));
-          }
+          side.pOnPlane = point(0, 2, -2);
+          pDIFFERENCE(point(0, 1, -2), side.pOnPlane, side.normal);
+          pNORMALIZE(side.normal);
       }
       else if (face == 2) {
           // left face
-          for (int i = -2; i <= 2; i++)
-          {
-              side.push_back(point(-2, i, -2));
-              side.push_back(point(-2, i, 2));
-              side.push_back(point(-2, -2, i));
-              side.push_back(point(-2, 2, i));
-          }
+          side.pOnPlane = point(-2, 0, -2);
+          pDIFFERENCE(point(-1, 0, -2), side.pOnPlane, side.normal);
+          pNORMALIZE(side.normal);
       }
       else if (face == 3) {
           // right face
-          for (int i = -2; i <= 2; i++)
-          {
-              side.push_back(point(2, i, -2));
-              side.push_back(point(2, i, 2));
-              side.push_back(point(2, -2, i));
-              side.push_back(point(2, 2, i));
-          }
+          side.pOnPlane = point(2, 0, -2);
+          pDIFFERENCE(point(1, 0, -2), side.pOnPlane, side.normal);
+          pNORMALIZE(side.normal);
       }
       jello.box.push_back(side);
   }
-
   return; 
 }
 

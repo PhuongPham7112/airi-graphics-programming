@@ -40,6 +40,12 @@ struct point
    point() : x(0.0), y(0.0), z(0.0) {}
 };
 
+struct plane
+{
+    point normal;
+    point pOnPlane;
+};
+
 struct indexStruct
 {
     int x;
@@ -68,7 +74,7 @@ struct world
   struct point p[8][8][8]; // position of the 512 control points
   struct point v[8][8][8]; // velocities of the 512 control points
   struct point up[8][8][8]; // undeformed position of the 512 control points
-  std::vector<std::vector<struct point>> box;
+  std::vector<struct plane> box;
 };
 
 extern struct world jello;
@@ -95,13 +101,11 @@ double getLength(struct point p);
 #define DOTPRODUCTp(vector1, vector2, dest)\
     DOTPRODUCT( (vector1).x, (vector1).y, (vector1).z,\
                 (vector2).x, (vector2).y, (vector2).z,\
-                (dest).x, (dest).y, (dest).z )
+                dest )
 
-#define DOTPRODUCT(x1,y1,z1,x2,y2,z2,x,y,z)\
+#define DOTPRODUCT(x1,y1,z1,x2,y2,z2,dest)\
 \
-  x = (x1) * (x2);\
-  y = (y1) * (y2);\
-  z = (z1) * (z2);
+  dest = (x1) * (x2) + (y1) * (y2) + (z1) * (z2);
 
 // normalizes vector dest
 // struct point dest

@@ -8,7 +8,7 @@
 #include "jello.h"
 #include "physics.h"
 #include <vector>
-
+#include <iostream>
 /* Computes acceleration to every control point of the jello cube, 
    which is in state given by 'jello'.
    Returns result in array 'a'. */
@@ -23,12 +23,8 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
         for (int j = 0; j <= maxIdx; j++) {
             for (int k = 0; k <= maxIdx; k++) { // at point [i][j][k]
                 point currentPoint = jello->p[i][j][k];
-                for (std::vector<point> face : jello->box) {
-                    for (point faceP : face) {
-
-                    }
-                }
                 point currentPointVelocity = jello->v[i][j][k];
+
                 std::vector<indexStruct> neighborIdx;
                 // find structural neightbors: 6 immediate neighbors
                 if (i > minIdx) neighborIdx.push_back(indexStruct(i - 1, j, k));
@@ -71,70 +67,90 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
                 if (k < maxIdx - 1) neighborIdx.push_back(indexStruct(i, j, k + 2));
                 
                 // find sum
+                point fTotal = point();
+                point fHook = point();
+                point fDamp = point();
+                point fExtern = point();
                 for (indexStruct idx : neighborIdx) {
                     point neighbor = jello->p[idx.x][idx.y][idx.z];
                     point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
-                    double restLength = distance(jello->up[idx.x][idx.y][idx.z], jello->up[i][j][k]); // how to store rest length in undeformed state
+                    double restLength = distance(jello->up[idx.x][idx.y][idx.z], jello->up[i][j][k]); // rest length in undeformed state
 
                     // calculate hook force
-                    point fHook;
-                    point hook = HookLaw(jello->kElastic, restLength, neighbor, currentPoint);
-                    pSUM(fHook, hook, fHook);
+                    pSUM(fHook, HookLaw(jello->kElastic, restLength, currentPoint, neighbor), fHook);
 
                     // calculate damp force
-                    point fDamp;
-                    point damp = Damping(jello->dElastic, neighbor, currentPoint, neighborVelocity, currentPointVelocity);
-                    pSUM(fDamp, damp, fDamp);
+                    pSUM(fDamp, Damping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fDamp);
+                }
+                // calculate total of spring forces
+                pSUM(fTotal, fHook, fTotal);
+                pSUM(fTotal, fDamp, fTotal);
 
-                    // calculate external force
-                    point fExtern;
+                // calculate collision springs forces
+                for (int f = 0; f < 4; f++) {
+                    point fCollision = point();
+                    plane face = jello->box[f];
+                    point product;
+                    point diff;
+                    point normalizedDiff;
+                    point collisionContact;
+                    double dot;
+                    double length;
+                    pDIFFERENCE(currentPoint, face.pOnPlane, diff);
+                    normalizedDiff = diff;
+                    pNORMALIZE(normalizedDiff);
+                    dot = DOTPRODUCTp(face.normal, diff, dot);
 
-                    // calculate total
-                    point fTotal;
-                    pMAKE(0.0, 0.0, 0.0, fTotal);
-                    pSUM(fTotal, fHook, fTotal);
-                    pSUM(fTotal, fDamp, fTotal);
-                    pSUM(fTotal, fExtern, fTotal);
+                    if (dot < 0.0) { // past the plane
+                        double penetration;
+                        point penetrationForce;
+                        point invNormal = point(-face.normal.x, -face.normal.y, -face.normal.z);
+                        penetration = DOTPRODUCTp(invNormal, diff, penetration);
+                        pMULTIPLY(face.normal, penetration, penetrationForce);
+                        pDIFFERENCE(currentPoint, penetrationForce, collisionContact);
 
-                    // a = F / m
-                    pDIVIDE(fTotal, jello->mass, a[i][j][k]);
-                }         
+                        point fCollisionHook = HookLaw(jello->kCollision, 0.0, collisionContact, currentPoint);
+                        point fCollisionDamp = Damping(jello->dCollision, collisionContact, currentPoint, penetrationForce, currentPointVelocity);
+
+                        pSUM(fCollisionHook, fCollision, fCollision);
+                        pSUM(fCollisionDamp, fCollision, fCollision);
+                    }
+                    pSUM(fCollision, fTotal, fTotal);
+                }
+
+                // a = F / m
+                pMULTIPLY(fTotal, (1.0 / jello->mass), a[i][j][k]);
             }
         }
     }
 }
 
 point HookLaw(double kHook, double restLength, point A, point B) {
-    point vec;
-    pDIFFERENCE(A, B, vec);
+    point fHook;
+    point L;
+    pDIFFERENCE(A, B, L);
+    point normL;
+    pCPY(L, normL);
     double length;
-    pNORMALIZE(vec);
-    pMULTIPLY(vec, -kHook * (length - restLength), vec);
-    return vec;
+    pNORMALIZE(normL);
+    pMULTIPLY(normL, -kHook * (length - restLength), fHook);
+    return fHook;
 }
 
 point Damping(double kDamp, point A, point B, point velA, point velB) {
+    point fDamp;
     point L; // a - b = L
     pDIFFERENCE(A, B, L);
-
     point velDiff; // vel a - vel b
     pDIFFERENCE(velA, velB, velDiff);
-
-    point product;
-    DOTPRODUCTp(L, velDiff, product);
-
+    point normL;
+    pCPY(L, normL);
     double length;
-    pNORMALIZE(L);
-
-    point med1;
-    pDIVIDE(product, length, med1);
-
-    point med2;
-    DOTPRODUCTp(med1, L, med2);
-    
-    point fDamp;
-    pMULTIPLY(med2, kDamp, fDamp);
-
+    pNORMALIZE(normL);
+    double product; // L . velDiff
+    DOTPRODUCTp(L, velDiff, product);
+    product *= (-kDamp) / length;
+    pMULTIPLY(normL, product, fDamp);
     return fDamp;
 }
 
