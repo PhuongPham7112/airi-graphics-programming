@@ -70,7 +70,7 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
                 point fTotal = point();
                 point fHook = point();
                 point fDamp = point();
-                point fExtern = point();
+                
                 for (indexStruct idx : neighborIdx) {
                     point neighbor = jello->p[idx.x][idx.y][idx.z];
                     point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
@@ -118,10 +118,92 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
                     pSUM(fCollision, fTotal, fTotal);
                 }
 
+                // calculate external force field
+                point fExtern = point();
+                calculateExternalForce(jello, i, j, k, fExtern);
+       
+                pSUM(fExtern, fTotal, fTotal);
+
                 // a = F / m
                 pMULTIPLY(fTotal, (1.0 / jello->mass), a[i][j][k]);
             }
         }
+    }
+}
+
+// Calculate external force field, add it to point p at (i, j, k) 
+void calculateExternalForce(world* jello, int x, int y, int z, point& a) {
+    // External force index in resolution array
+    int i, j, k;
+    // Forces at 8 corners in a specific grid surrounding the point p
+    point f000, f001;
+    point f010, f011;
+    point f100, f101;
+    point f110, f111;
+    // External force position in grid
+    double px, py, pz;
+    // Force field grid
+    double grid;
+    // External force field value
+    point externalForce;
+    externalForce.x = 0;
+    externalForce.y = 0;
+    externalForce.z = 0;
+
+    i = int((jello->p[x][y][z].x + 2) * (jello->resolution - 1) / 4);
+    j = int((jello->p[x][y][z].y + 2) * (jello->resolution - 1) / 4);
+    k = int((jello->p[x][y][z].z + 2) * (jello->resolution - 1) / 4);
+
+    // Check if the index is at the wall of the bounding box
+    if (i == (jello->resolution - 1)) {
+        i--;
+    }
+    if (j == (jello->resolution - 1)) {
+        j--;
+    }
+    if (k == (jello->resolution - 1)) {
+        k--;
+    }
+    // Check if the point is inside the bounding box, read the force field value
+    if (((i >= 0) && (i <= jello->resolution - 1)) && ((j >= 0) && (j <= jello->resolution - 1)) && ((j >= 0) && (j <= jello->resolution - 1))) {
+        f000 = jello->forceField[(i * jello->resolution * jello->resolution + j * jello->resolution + k)];
+        f001 = jello->forceField[(i * jello->resolution * jello->resolution + j * jello->resolution + (k + 1))];
+
+        f010 = jello->forceField[(i * jello->resolution * jello->resolution + (j + 1) * jello->resolution + k)];
+        f011 = jello->forceField[(i * jello->resolution * jello->resolution + (j + 1) * jello->resolution + (k + 1))];
+
+        f100 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + j * jello->resolution + k)];
+        f101 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + j * jello->resolution + (k + 1))];
+
+        f110 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + (j + 1) * jello->resolution + k)];
+        f111 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + (j + 1) * jello->resolution + (k + 1))];
+
+        // 3D interpolation
+        grid = 1.0 * 4 / (jello->resolution - 1);
+        px = (jello->p[x][y][z].x - (-2 + 1.0 * 4 * i / (jello->resolution - 1))) / grid;
+        py = (jello->p[x][y][z].y - (-2 + 1.0 * 4 * j / (jello->resolution - 1))) / grid;
+        pz = (jello->p[x][y][z].z - (-2 + 1.0 * 4 * k / (jello->resolution - 1))) / grid;
+
+        pMULTIPLY(f000, (1 - px) * (1 - py) * (1 - pz), f000);
+        pMULTIPLY(f001, (1 - px) * (1 - py) * pz, f001);
+        pMULTIPLY(f010, (1 - px) * py * (1 - pz), f010);
+        pMULTIPLY(f011, (1 - px) * py * pz, f011);
+        pMULTIPLY(f100, px * (1 - py) * (1 - pz), f100);
+        pMULTIPLY(f101, px * (1 - py) * pz, f101);
+        pMULTIPLY(f110, px * py * (1 - pz), f110);
+        pMULTIPLY(f111, px * py * pz, f111);
+
+        pSUM(externalForce, f000, externalForce);
+        pSUM(externalForce, f001, externalForce);
+        pSUM(externalForce, f010, externalForce);
+        pSUM(externalForce, f011, externalForce);
+        pSUM(externalForce, f100, externalForce);
+        pSUM(externalForce, f101, externalForce);
+        pSUM(externalForce, f110, externalForce);
+        pSUM(externalForce, f111, externalForce);
+        a.x = externalForce.x;
+        a.y = externalForce.y;
+        a.z = externalForce.z;
     }
 }
 
