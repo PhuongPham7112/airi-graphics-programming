@@ -131,7 +131,8 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
     }
 }
 
-// Calculate external force field, add it to point p at (i, j, k) 
+// Calculate external force field, add it to point p at (i, j, k)
+// src: https://www.scratchapixel.com/lessons/mathematics-physics-for-computer-graphics/interpolation/trilinear-interpolation.html
 void calculateExternalForce(world* jello, int x, int y, int z, point& a) {
     // External force index in resolution array
     int i, j, k;
