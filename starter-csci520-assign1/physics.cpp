@@ -226,11 +226,11 @@ point Damping(double kDamp, point A, point B, point velA, point velB) {
     pDIFFERENCE(A, B, L);
     point velDiff; // vel a - vel b
     pDIFFERENCE(velA, velB, velDiff);
-    point normL;
+    point normL; // normalize vector L
     pCPY(L, normL);
     double length;
     pNORMALIZE(normL);
-    double product; // L . velDiff
+    double product; // L dot velDiff
     DOTPRODUCTp(L, velDiff, product);
     product *= (-kDamp) / length;
     pMULTIPLY(normL, product, fDamp);
