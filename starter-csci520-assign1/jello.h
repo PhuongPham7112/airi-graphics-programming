@@ -75,6 +75,7 @@ struct world
   struct point v[8][8][8]; // velocities of the 512 control points
   struct point up[8][8][8]; // undeformed position of the 512 control points
   std::vector<struct plane> box;
+  double boxSize;
 };
 
 extern struct world jello;

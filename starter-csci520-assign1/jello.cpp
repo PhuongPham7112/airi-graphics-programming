@@ -54,6 +54,7 @@ void myinit()
   for (int face = 0; face < 4; face++) {
       plane side;
       double length;
+      double boxSize;
       if (face == 0) {
           // front face
           side.pOnPlane = point(0, -2, -2);
@@ -80,6 +81,7 @@ void myinit()
       }
       jello.box.push_back(side);
   }
+  jello.boxSize = 4.0;
   return; 
 }
 
