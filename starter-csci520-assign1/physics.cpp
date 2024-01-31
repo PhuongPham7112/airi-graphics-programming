@@ -21,42 +21,105 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
     for (int i = 0; i <= maxIdx; i++) {
         for (int j = 0; j <= maxIdx; j++) {
             for (int k = 0; k <= maxIdx; k++) { // at point [i][j][k]
+                // find sum
+                point fTotal = point(0.0, 0.0, 0.0);
+
                 point currentPoint = jello->p[i][j][k];
                 point currentPointVelocity = jello->v[i][j][k];
 
-                std::vector<indexStruct> neighborIdx;
                 // find structural neightbors: 6 immediate neighbors
+                std::vector<indexStruct> neighborIdx;
                 if (i > minIdx) neighborIdx.push_back(indexStruct(i - 1, j, k));
                 if (i < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j, k));
                 if (j > minIdx) neighborIdx.push_back(indexStruct(i, j - 1, k));
                 if (j < maxIdx) neighborIdx.push_back(indexStruct(i, j + 1, k));
                 if (k > minIdx) neighborIdx.push_back(indexStruct(i, j, k - 1));
                 if (k < maxIdx) neighborIdx.push_back(indexStruct(i, j, k + 1));
-                // find shear neighbors: 
-                // xy plane
-                if (i < maxIdx && j < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k));
-                if (i < maxIdx && j > minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k));
-                if (i > minIdx && j < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k));
-                if (i > minIdx && j > minIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k));
-                // yz plane
-                if (j < maxIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i, j + 1, k + 1));
-                if (j > minIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i, j - 1, k + 1));
-                if (j < maxIdx && k > minIdx) neighborIdx.push_back(indexStruct(i, j + 1, k - 1));
-                if (j > minIdx && k > minIdx) neighborIdx.push_back(indexStruct(i, j - 1, k - 1));
-                // xz plane
+                for (indexStruct idx : neighborIdx) {
+                    point neighbor = jello->p[idx.x][idx.y][idx.z];
+                    point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
+
+                    // calculate hook force
+                    pSUM(fTotal, HookLaw(jello->kElastic, jello->unrestLength, currentPoint, neighbor), fTotal);
+                    // calculate damp force
+                    pSUM(fTotal, Damping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                }
+                neighborIdx.clear();
+
+                // find shear neighbors
+                if (i < maxIdx) {
+                    if (j < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k));
+                    if (j > minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k));
+                }
+
+                if (i > minIdx) {
+                    if (j < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k));
+                    if (j > minIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k));
+                }
+
+                if (j < maxIdx) {
+                    if (k < maxIdx) neighborIdx.push_back(indexStruct(i, j + 1, k + 1));
+                    if (k > minIdx) neighborIdx.push_back(indexStruct(i, j + 1, k - 1));
+                }
+
+                if (j > minIdx) {
+                    if (k < maxIdx) neighborIdx.push_back(indexStruct(i, j - 1, k + 1));
+                    if (k > minIdx) neighborIdx.push_back(indexStruct(i, j - 1, k - 1));
+                }
+
                 if (i < maxIdx && k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j, k - 1));
                 if (i < maxIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j, k + 1));
+
                 if (i > minIdx && k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j, k - 1));
                 if (i > minIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j, k + 1));
-                // diagonal
-                if (i < maxIdx && j < maxIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k + 1));
-                if (i < maxIdx && j < maxIdx && k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k - 1));
-                if (i < maxIdx && j > minIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k + 1));
-                if (i < maxIdx && j > minIdx && k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k - 1));
-                if (i > minIdx && j < maxIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k + 1));
-                if (i > minIdx && j < maxIdx && k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k - 1));
-                if (i > minIdx && j > minIdx && k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k - 1));
-                if (i > minIdx && j > minIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k + 1));
+
+                for (indexStruct idx : neighborIdx) {
+                    point neighbor = jello->p[idx.x][idx.y][idx.z];
+                    point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
+
+                    // calculate hook force
+                    pSUM(fTotal, HookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                    // calculate damp force
+                    pSUM(fTotal, Damping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                }
+                neighborIdx.clear();
+                
+                // DEBUG: shear diagonal
+                if (i < maxIdx) {
+                    if (j < maxIdx) {
+                        if (k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k + 1));
+                        if (k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k - 1));
+                    }
+
+                    if (j > minIdx) {
+                        if (k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k + 1));
+                        if (k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k - 1));
+                    }
+                }
+
+                if (i > minIdx) {
+                    if (j < maxIdx) {
+                        if (k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k + 1));
+                        if (k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k - 1));
+                    }
+
+                    if (j > minIdx) {
+                        if (k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k + 1));
+                        if (k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k - 1));
+                    }
+                }
+
+                for (indexStruct idx : neighborIdx) {
+                    point neighbor = jello->p[idx.x][idx.y][idx.z];
+                    point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
+
+                    // calculate hook force
+                    pSUM(fTotal, HookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
+                    // calculate damp force
+                    pSUM(fTotal, Damping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                }
+                neighborIdx.clear();
+
                 // find bending neighbors
                 if (i > minIdx + 1) neighborIdx.push_back(indexStruct(i - 2, j, k));
                 if (i < maxIdx - 1) neighborIdx.push_back(indexStruct(i + 2, j, k));
@@ -64,28 +127,18 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
                 if (j < maxIdx - 1) neighborIdx.push_back(indexStruct(i, j + 2, k));
                 if (k > minIdx + 1) neighborIdx.push_back(indexStruct(i, j, k - 2));
                 if (k < maxIdx - 1) neighborIdx.push_back(indexStruct(i, j, k + 2));
-                
-                // find sum
-                point fTotal = point();
-                point fHook = point();
-                point fDamp = point();
-                
                 for (indexStruct idx : neighborIdx) {
                     point neighbor = jello->p[idx.x][idx.y][idx.z];
                     point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
-                    double restLength = distance(jello->up[idx.x][idx.y][idx.z], jello->up[i][j][k]); // rest length in undeformed state
 
                     // calculate hook force
-                    pSUM(fHook, HookLaw(jello->kElastic, restLength, currentPoint, neighbor), fHook);
-
+                    pSUM(fTotal, HookLaw(jello->kElastic, jello->unrestLengthBend, currentPoint, neighbor), fTotal);
                     // calculate damp force
-                    pSUM(fDamp, Damping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fDamp);
+                    pSUM(fTotal, Damping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
                 }
-                // calculate total of spring forces
-                pSUM(fTotal, fHook, fTotal);
-                pSUM(fTotal, fDamp, fTotal);
+                neighborIdx.clear();
 
-                // calculate collision springs forces
+                 //calculate collision springs forces
                 for (int f = 0; f < 4; f++) {
                     point fCollision = point();
                     plane face = jello->box[f];
@@ -118,9 +171,7 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
                 }
 
                 // calculate external force field
-                point fExtern = point();
-                calculateExternalForce(jello, i, j, k, fExtern);
-                pSUM(fExtern, fTotal, fTotal);
+                calculateExternalForce(jello, i, j, k, fTotal);
 
                 // a = F / m
                 pMULTIPLY(fTotal, (1.0 / jello->mass), a[i][j][k]);
@@ -149,28 +200,33 @@ void calculateExternalForce(world* jello, int x, int y, int z, point& a) {
     externalForce.z = 0;
 
 
-    // 4 / cube_nums
-    double cube_h = jello->boxSize / (jello->resolution - 1);
-    double cube_h_inv = 1 / cube_h;
+    // 4 / cube_nums = 4 / (resolution - 1)
+    double cube_h = 4.0 / (jello->resolution - 1);
+    double cube_h_inv = 1.0 / cube_h;
 
-    // index of the cell inside force field
-    i = (int)(floor((jello->p[x][y][z].x + 2) * cube_h_inv)); // pos.x / h
-    j = (int)(floor((jello->p[x][y][z].y + 2) * cube_h_inv)); // pos.y / h
-    k = (int)(floor((jello->p[x][y][z].z + 2) * cube_h_inv)); // pos.z / h
-
-    //i = int((jello->p[x][y][z].x + 2) * (jello->resolution - 1) / 4);
-    //j = int((jello->p[x][y][z].y + 2) * (jello->resolution - 1) / 4);
-    //k = int((jello->p[x][y][z].z + 2) * (jello->resolution - 1) / 4);
+    // index of the cell inside force field, origin (-2, -2, -2)
+    i = (int)((jello->p[x][y][z].x + 2) / cube_h); // pos.x / h
+    j = (int)((jello->p[x][y][z].y + 2) / cube_h); // pos.y / h
+    k = (int)((jello->p[x][y][z].z + 2) / cube_h); // pos.z / h
     
     // Check if the index is at the wall of the bounding box
     if (i == (jello->resolution - 1)) {
         i--;
     }
+    else if (i < 0) {
+        i = 0;
+    }
     if (j == (jello->resolution - 1)) {
         j--;
     }
+    else if (j < 0) {
+        j = 0;
+    }
     if (k == (jello->resolution - 1)) {
         k--;
+    }
+    else if (k < 0) {
+        k = 0;
     }
 
     // Check if the point is inside the bounding box & read the force field value
@@ -188,35 +244,36 @@ void calculateExternalForce(world* jello, int x, int y, int z, point& a) {
         f111 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + (j + 1) * jello->resolution + (k + 1))];
 
         // 3D interpolation, find coefficient, think of these as weights
+        // alpha, beta, gamma coefficients
         // where is this point in the cell, given that it's inside cell (i, j, k)
-        px = (jello->p[x][y][z].x - cube_h + 2) * cube_h_inv; // (pos.x - cube_h) / cube_h
-        py = (jello->p[x][y][z].y - cube_h + 2) * cube_h_inv;
-        pz = (jello->p[x][y][z].z - cube_h + 2) * cube_h_inv;
+        double x0 = -2 + cube_h * i;
+        double y0 = -2 + cube_h * j;
+        double z0 = -2 + cube_h * k;
+        px = (jello->p[x][y][z].x - x0) / cube_h; // (x - x0) / len
+        py = (jello->p[x][y][z].y - y0) / cube_h; // (y - y0) / len
+        pz = (jello->p[x][y][z].z - z0) / cube_h; // (z - z0) / len
 
         pMULTIPLY(f000, (1 - px) * (1 - py) * (1 - pz), f000);
+        pSUM(a, f000, a);
         pMULTIPLY(f001, (1 - px) * (1 - py) * pz, f001);
+        pSUM(a, f001, a);
         pMULTIPLY(f010, (1 - px) * py * (1 - pz), f010);
+        pSUM(a, f010, a);
         pMULTIPLY(f011, (1 - px) * py * pz, f011);
+        pSUM(a, f011, a);
         pMULTIPLY(f100, px * (1 - py) * (1 - pz), f100);
+        pSUM(a, f100, a);
         pMULTIPLY(f101, px * (1 - py) * pz, f101);
+        pSUM(a, f101, a);
         pMULTIPLY(f110, px * py * (1 - pz), f110);
+        pSUM(a, f110, a);
         pMULTIPLY(f111, px * py * pz, f111);
-
-        pSUM(externalForce, f000, a);
-        pSUM(externalForce, f001, a);
-        pSUM(externalForce, f010, a);
-        pSUM(externalForce, f011, a);
-        pSUM(externalForce, f100, a);
-        pSUM(externalForce, f101, a);
-        pSUM(externalForce, f110, a);
-        pSUM(externalForce, f111, a);
-        //a.x = externalForce.x;
-        //a.y = externalForce.y;
-        //a.z = externalForce.z;
+        pSUM(a, f111, a);
     }
 }
 
 point HookLaw(double kHook, double restLength, point A, point B) {
+    // F = (-kH * (|L| - rL)) * (L/|L|)
     point fHook;
     point L;
     pDIFFERENCE(A, B, L);
@@ -229,6 +286,7 @@ point HookLaw(double kHook, double restLength, point A, point B) {
 }
 
 point Damping(double kDamp, point A, point B, point velA, point velB) {
+    // F = (-kD * ((vA-vB) dot L) / |L|) * (L/|L|)
     point fDamp;
     point L; // a - b = L
     pDIFFERENCE(A, B, L);

@@ -116,10 +116,12 @@ void showCube(struct world * jello)
             PROCESS_NEIGHBOUR(-1,1,0);
             PROCESS_NEIGHBOUR(-1,-1,0);
             PROCESS_NEIGHBOUR(1,-1,0);
+
             PROCESS_NEIGHBOUR(0,1,1);
             PROCESS_NEIGHBOUR(0,-1,1);
             PROCESS_NEIGHBOUR(0,-1,-1);
             PROCESS_NEIGHBOUR(0,1,-1);
+
             PROCESS_NEIGHBOUR(1,0,1);
             PROCESS_NEIGHBOUR(-1,0,1);
             PROCESS_NEIGHBOUR(-1,0,-1);

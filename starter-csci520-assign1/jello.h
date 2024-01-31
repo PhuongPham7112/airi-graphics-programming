@@ -73,9 +73,13 @@ struct world
   struct point * forceField; // pointer to the array of values of the force field
   struct point p[8][8][8]; // position of the 512 control points
   struct point v[8][8][8]; // velocities of the 512 control points
-  struct point up[8][8][8]; // undeformed position of the 512 control points
   std::vector<struct plane> box;
-  double boxSize;
+  double boxSize = 4.0;
+  double unrestLength = 1.0 / 7.0;
+  double unrestLengthShear = sqrt(2.0) * unrestLength;
+  double unrestLengthShearDiag = sqrt(3.0) * unrestLength;
+  double unrestLengthBend = 2.0 * unrestLength;
+
 };
 
 extern struct world jello;
