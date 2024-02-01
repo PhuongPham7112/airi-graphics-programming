@@ -20,7 +20,7 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
     int minIdx = 0;
     for (int i = 0; i <= maxIdx; i++) {
         for (int j = 0; j <= maxIdx; j++) {
-            for (int k = 0; k <= maxIdx; k++) { // at point [i][j][k]
+            for (int k = 0; k <= maxIdx; k++) { // at point [i][j][k]                
                 // find sum
                 point fTotal = point(0.0, 0.0, 0.0);
 
@@ -50,28 +50,23 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
                 if (i < maxIdx) {
                     if (j < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k));
                     if (j > minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k));
+                    if (k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j, k - 1));
+                    if (k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j, k + 1));
                 }
-
                 if (i > minIdx) {
                     if (j < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k));
                     if (j > minIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k));
+                    if (k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j, k - 1));
+                    if (k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j, k + 1));
                 }
-
                 if (j < maxIdx) {
                     if (k < maxIdx) neighborIdx.push_back(indexStruct(i, j + 1, k + 1));
                     if (k > minIdx) neighborIdx.push_back(indexStruct(i, j + 1, k - 1));
                 }
-
                 if (j > minIdx) {
                     if (k < maxIdx) neighborIdx.push_back(indexStruct(i, j - 1, k + 1));
                     if (k > minIdx) neighborIdx.push_back(indexStruct(i, j - 1, k - 1));
                 }
-
-                if (i < maxIdx && k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j, k - 1));
-                if (i < maxIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j, k + 1));
-
-                if (i > minIdx && k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j, k - 1));
-                if (i > minIdx && k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j, k + 1));
 
                 for (indexStruct idx : neighborIdx) {
                     point neighbor = jello->p[idx.x][idx.y][idx.z];
@@ -85,27 +80,26 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
                 neighborIdx.clear();
                 
                 // DEBUG: shear diagonal
-                if (i < maxIdx) {
-                    if (j < maxIdx) {
-                        if (k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k + 1));
-                        if (k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k - 1));
+                if (i + 1 <= maxIdx) {
+                    if (j + 1 <= maxIdx) {
+                        if (k + 1 <= maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k + 1));
+                        if (k - 1 >= minIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k - 1));
                     }
 
-                    if (j > minIdx) {
-                        if (k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k + 1));
-                        if (k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k - 1));
+                    if (j - 1 >= minIdx) {
+                        if (k + 1 <= maxIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k + 1));
+                        if (k - 1 >= minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k - 1));
                     }
                 }
-
-                if (i > minIdx) {
-                    if (j < maxIdx) {
-                        if (k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k + 1));
-                        if (k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k - 1));
+                if (i - 1 >= minIdx) {
+                    if (j + 1 <= maxIdx) {
+                        if (k + 1 <= maxIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k + 1));
+                        if (k - 1 >= minIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k - 1));
                     }
 
-                    if (j > minIdx) {
-                        if (k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k + 1));
-                        if (k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k - 1));
+                    if (j - 1 >= minIdx) {
+                        if (k + 1 <= maxIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k + 1));
+                        if (k - 1 >= minIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k - 1));
                     }
                 }
 
@@ -201,7 +195,7 @@ void calculateExternalForce(world* jello, int x, int y, int z, point& a) {
 
 
     // 4 / cube_nums = 4 / (resolution - 1)
-    double cube_h = 4.0 / (jello->resolution - 1);
+    double cube_h = jello->boxSize / (jello->resolution - 1);
     double cube_h_inv = 1.0 / cube_h;
 
     // index of the cell inside force field, origin (-2, -2, -2)
