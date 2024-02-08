@@ -51,7 +51,7 @@ void myinit()
 
   // init bounding box planes
   // plane struct: a, b, c, d, point on plane
-  for (int face = 0; face < 4; face++) {
+  for (int face = 0; face < 6; face++) {
       plane side;
       double length;
       double boxSize;
@@ -79,7 +79,27 @@ void myinit()
           pDIFFERENCE(point(1, 0, -2), side.pOnPlane, side.normal);
           pNORMALIZE(side.normal);
       }
+      else if (face == 4) {
+          // top face
+          side.pOnPlane = point(0, 2, 0);
+          pDIFFERENCE(point(0, 1, 0), side.pOnPlane, side.normal);
+          pNORMALIZE(side.normal);
+      }
+      else if (face == 5) {
+          // bottom face
+          side.pOnPlane = point(0, -2, 0);
+          pDIFFERENCE(point(0, -1, 0), side.pOnPlane, side.normal);
+          pNORMALIZE(side.normal);
+      }
       jello.box.push_back(side);
+  }
+
+  // check inclined plane
+  if (jello.incPlanePresent)
+  {
+      jello.inclinedPlane.normal = point(jello.a, jello.b, jello.c);
+      jello.inclinedPlane.pOnPlane = point(0.0, 0.0, -jello.d / jello.c);
+      jello.box.push_back(jello.inclinedPlane);
   }
   jello.boxSize = 4.0;
   return; 

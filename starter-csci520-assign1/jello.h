@@ -74,6 +74,7 @@ struct world
   struct point p[8][8][8]; // position of the 512 control points
   struct point v[8][8][8]; // velocities of the 512 control points
   std::vector<struct plane> box;
+  plane inclinedPlane;
   double boxSize = 4.0;
   double unrestLength = 1.0 / 7.0;
   double unrestLengthShear = sqrt(2.0) * unrestLength;

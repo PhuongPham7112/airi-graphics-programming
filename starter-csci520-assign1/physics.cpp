@@ -7,7 +7,21 @@
 
 #include "jello.h"
 #include "physics.h"
+#include <iostream>
 #include <vector>
+
+union unholy_t { /* a union between a float and an integer */
+public:
+    float f;
+    int i;
+};
+
+int floatToInt(float val) {
+    unholy_t unholy;
+    unholy.f = val + (1 << 23); /* scrape off the fraction bits with the weird constant */
+    return unholy.i & 0x7FffFF; /* mask off the float's sign and exponent bits */
+}
+
 /* Computes acceleration to every control point of the jello cube, 
    which is in state given by 'jello'.
    Returns result in array 'a'. */
@@ -133,7 +147,7 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
                 neighborIdx.clear();
 
                  //calculate collision springs forces
-                for (int f = 0; f < 4; f++) {
+                for (int f = 0; f < jello->box.size(); f++) {
                     point fCollision = point();
                     plane face = jello->box[f];
                     point product;
@@ -160,6 +174,7 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
 
                         pSUM(fCollisionHook, fCollision, fCollision);
                         pSUM(fCollisionDamp, fCollision, fCollision);
+                        std::cout << "Hit wall " << f << std::endl;
                     }
                     pSUM(fCollision, fTotal, fTotal);
                 }
@@ -199,9 +214,9 @@ void calculateExternalForce(world* jello, int x, int y, int z, point& a) {
     double cube_h_inv = 1.0 / cube_h;
 
     // index of the cell inside force field, origin (-2, -2, -2)
-    i = (int)((jello->p[x][y][z].x + 2) / cube_h); // pos.x / h
-    j = (int)((jello->p[x][y][z].y + 2) / cube_h); // pos.y / h
-    k = (int)((jello->p[x][y][z].z + 2) / cube_h); // pos.z / h
+    i = floatToInt((jello->p[x][y][z].x + 2) / cube_h); // pos.x / h
+    j = floatToInt((jello->p[x][y][z].y + 2) / cube_h); // pos.y / h
+    k = floatToInt((jello->p[x][y][z].z + 2) / cube_h); // pos.z / h
     
     // Check if the index is at the wall of the bounding box
     if (i == (jello->resolution - 1)) {
