@@ -60,7 +60,7 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
                 }
                 neighborIdx.clear();
 
-                // find shear neighbors
+                // shear neighbors
                 if (i < maxIdx) {
                     if (j < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k));
                     if (j > minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k));
@@ -93,7 +93,7 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
                 }
                 neighborIdx.clear();
                 
-                // DEBUG: shear diagonal
+                // shear diagonal
                 if (i + 1 <= maxIdx) {
                     if (j + 1 <= maxIdx) {
                         if (k + 1 <= maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k + 1));
@@ -174,13 +174,14 @@ void computeAcceleration(struct world * jello, struct point a[8][8][8])
 
                         pSUM(fCollisionHook, fCollision, fCollision);
                         pSUM(fCollisionDamp, fCollision, fCollision);
-                        std::cout << "Hit wall " << f << std::endl;
                     }
                     pSUM(fCollision, fTotal, fTotal);
                 }
 
                 // calculate external force field
-                calculateExternalForce(jello, i, j, k, fTotal);
+                point fExternal;
+                calculateExternalForce(jello, i, j, k, fExternal);
+                pSUM(fTotal, fExternal, fTotal);
 
                 // a = F / m
                 pMULTIPLY(fTotal, (1.0 / jello->mass), a[i][j][k]);
@@ -200,23 +201,11 @@ void calculateExternalForce(world* jello, int x, int y, int z, point& a) {
     point f010, f011;
     point f100, f101;
     point f110, f111;
-    // position in cell
-    double px, py, pz;
-    // External force field value
-    point externalForce;
-    externalForce.x = 0;
-    externalForce.y = 0;
-    externalForce.z = 0;
-
-
-    // 4 / cube_nums = 4 / (resolution - 1)
-    double cube_h = jello->boxSize / (jello->resolution - 1);
-    double cube_h_inv = 1.0 / cube_h;
 
     // index of the cell inside force field, origin (-2, -2, -2)
-    i = floatToInt((jello->p[x][y][z].x + 2) / cube_h); // pos.x / h
-    j = floatToInt((jello->p[x][y][z].y + 2) / cube_h); // pos.y / h
-    k = floatToInt((jello->p[x][y][z].z + 2) / cube_h); // pos.z / h
+    i = floatToInt((jello->p[x][y][z].x + 2.0) * jello->cubeSizeInv); // pos.x / h
+    j = floatToInt((jello->p[x][y][z].y + 2.0) * jello->cubeSizeInv); // pos.y / h
+    k = floatToInt((jello->p[x][y][z].z + 2.0) * jello->cubeSizeInv); // pos.z / h
     
     // Check if the index is at the wall of the bounding box
     if (i == (jello->resolution - 1)) {
@@ -252,30 +241,35 @@ void calculateExternalForce(world* jello, int x, int y, int z, point& a) {
         f110 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + (j + 1) * jello->resolution + k)];
         f111 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + (j + 1) * jello->resolution + (k + 1))];
 
-        // 3D interpolation, find coefficient, think of these as weights
-        // alpha, beta, gamma coefficients
-        // where is this point in the cell, given that it's inside cell (i, j, k)
-        double x0 = -2 + cube_h * i;
-        double y0 = -2 + cube_h * j;
-        double z0 = -2 + cube_h * k;
-        px = (jello->p[x][y][z].x - x0) / cube_h; // (x - x0) / len
-        py = (jello->p[x][y][z].y - y0) / cube_h; // (y - y0) / len
-        pz = (jello->p[x][y][z].z - z0) / cube_h; // (z - z0) / len
+        // 3D interpolation, find coefficient, think of these as weights: alpha, beta, gamma coefficients
+        double x0 = -2.0 + jello->cubeSize * i;
+        double y0 = -2.0 + jello->cubeSize * j;
+        double z0 = -2.0 + jello->cubeSize * k;
+        double px = (jello->p[x][y][z].x - x0) * jello->cubeSizeInv; // (x - x0) / len
+        double py = (jello->p[x][y][z].y - y0) * jello->cubeSizeInv; // (y - y0) / len
+        double pz = (jello->p[x][y][z].z - z0) * jello->cubeSizeInv; // (z - z0) / len
 
-        pMULTIPLY(f000, (1 - px) * (1 - py) * (1 - pz), f000);
+        pMULTIPLY(f000, (1.0 - px) * (1.0 - py) * (1.0 - pz), f000);
         pSUM(a, f000, a);
-        pMULTIPLY(f001, (1 - px) * (1 - py) * pz, f001);
+
+        pMULTIPLY(f001, (1.0 - px) * (1.0 - py) * pz, f001);
         pSUM(a, f001, a);
-        pMULTIPLY(f010, (1 - px) * py * (1 - pz), f010);
+
+        pMULTIPLY(f010, (1.0 - px) * py * (1.0 - pz), f010);
         pSUM(a, f010, a);
-        pMULTIPLY(f011, (1 - px) * py * pz, f011);
+
+        pMULTIPLY(f011, (1.0 - px) * py * pz, f011);
         pSUM(a, f011, a);
-        pMULTIPLY(f100, px * (1 - py) * (1 - pz), f100);
+
+        pMULTIPLY(f100, px * (1.0 - py) * (1.0 - pz), f100);
         pSUM(a, f100, a);
-        pMULTIPLY(f101, px * (1 - py) * pz, f101);
+
+        pMULTIPLY(f101, px * (1.0 - py) * pz, f101);
         pSUM(a, f101, a);
-        pMULTIPLY(f110, px * py * (1 - pz), f110);
+
+        pMULTIPLY(f110, px * py * (1.0 - pz), f110);
         pSUM(a, f110, a);
+
         pMULTIPLY(f111, px * py * pz, f111);
         pSUM(a, f111, a);
     }

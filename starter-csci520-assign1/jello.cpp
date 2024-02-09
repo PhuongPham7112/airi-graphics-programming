@@ -97,9 +97,10 @@ void myinit()
   // check inclined plane
   if (jello.incPlanePresent)
   {
-      jello.inclinedPlane.normal = point(jello.a, jello.b, jello.c);
-      jello.inclinedPlane.pOnPlane = point(0.0, 0.0, -jello.d / jello.c);
-      jello.box.push_back(jello.inclinedPlane);
+      plane inclinedPlane;
+      inclinedPlane.normal = point(jello.a, jello.b, jello.c);
+      inclinedPlane.pOnPlane = point(0.0, 0.0, -jello.d / jello.c);
+      jello.box.push_back(inclinedPlane);
   }
   jello.boxSize = 4.0;
   return; 

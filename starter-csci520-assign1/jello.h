@@ -76,6 +76,8 @@ struct world
   std::vector<struct plane> box;
   plane inclinedPlane;
   double boxSize = 4.0;
+  double cubeSize = boxSize / (resolution - 1.0);   // 4 / cube_nums = 4 / (resolution - 1)
+  double cubeSizeInv = 1.0 / cubeSize;
   double unrestLength = 1.0 / 7.0;
   double unrestLengthShear = sqrt(2.0) * unrestLength;
   double unrestLengthShearDiag = sqrt(3.0) * unrestLength;
