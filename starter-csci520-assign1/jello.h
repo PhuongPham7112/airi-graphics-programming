@@ -36,8 +36,8 @@ struct point
    double x;
    double y;
    double z;
-   point(double in_x, double in_y, double in_z) : x(in_x), y(in_y), z(in_z) {}
-   point() : x(0.0), y(0.0), z(0.0) {}
+    point(double in_x, double in_y, double in_z) : x(in_x), y(in_y), z(in_z) {}
+    point() : x(0.0), y(0.0), z(0.0) {}
 };
 
 struct plane
@@ -59,35 +59,40 @@ extern int shear, bend, structural, pause, viewingMode, saveScreenToFile;
 
 struct world
 {
-  char integrator[10]; // "RK4" or "Euler"
-  double dt; // timestep, e.g.. 0.001
-  int n; // display only every nth timepoint
-  double kElastic; // Hook's elasticity coefficient for all springs except collision springs
-  double dElastic; // Damping coefficient for all springs except collision springs
-  double kCollision; // Hook's elasticity coefficient for collision springs
-  double dCollision; // Damping coefficient collision springs
-  double mass; // mass of each of the 512 control points, mass assumed to be equal for every control point
-  int incPlanePresent; // Is the inclined plane present? 1 = YES, 0 = NO (always NO in this assignment)
-  double a,b,c,d; // inclined plane has equation a * x + b * y + c * z + d = 0; if no inclined plane, these four fields are not used
-  int resolution; // resolution for the 3d grid specifying the external force field; value of 0 means that there is no force field
-  struct point * forceField; // pointer to the array of values of the force field
-  struct point p[8][8][8]; // position of the 512 control points
-  struct point v[8][8][8]; // velocities of the 512 control points
-  std::vector<struct plane> box;
-  plane inclinedPlane;
-  double boxSize = 4.0;
-  double cubeSize = boxSize / (resolution - 1.0);   // 4 / cube_nums = 4 / (resolution - 1)
-  double cubeSizeInv = 1.0 / cubeSize;
-  double unrestLength = 1.0 / 7.0;
-  double unrestLengthShear = sqrt(2.0) * unrestLength;
-  double unrestLengthShearDiag = sqrt(3.0) * unrestLength;
-  double unrestLengthBend = 2.0 * unrestLength;
-
+    char integrator[10]; // "RK4" or "Euler"
+    double dt; // timestep, e.g.. 0.001
+    int n; // display only every nth timepoint
+    double kElastic; // Hook's elasticity coefficient for all springs except collision springs
+    double dElastic; // Damping coefficient for all springs except collision springs
+    double kCollision; // Hook's elasticity coefficient for collision springs
+    double dCollision; // Damping coefficient collision springs
+    double mass; // mass of each of the 512 control points, mass assumed to be equal for every control point
+    int incPlanePresent; // Is the inclined plane present? 1 = YES, 0 = NO (always NO in this assignment)
+    double a, b, c, d; // inclined plane has equation a * x + b * y + c * z + d = 0; if no inclined plane, these four fields are not used
+    int resolution; // resolution for the 3d grid specifying the external force field; value of 0 means that there is no force field
+    struct point* forceField; // pointer to the array of values of the force field
+    struct point p[8][8][8]; // position of the 512 control points
+    struct point v[8][8][8]; // velocities of the 512 control points
+    std::vector<struct plane> box;
+    double boxSize = 4.0;
+    double cubeSize = boxSize / (resolution - 1.0);   // 4 / cube_nums = 4 / (resolution - 1)
+    double cubeSizeInv = 1.0 / cubeSize;
+    double unrestLength = 1.0 / 7.0;
+    double unrestLengthShear = sqrt(2.0) * unrestLength;
+    double unrestLengthShearDiag = sqrt(3.0) * unrestLength;
+    double unrestLengthBend = 2.0 * unrestLength;
 };
 
 extern struct world jello;
 
-double getLength(struct point p);
+#define DOTPRODUCTp(vector1, vector2, dest)\
+    DOTPRODUCT( (vector1).x, (vector1).y, (vector1).z,\
+                (vector2).x, (vector2).y, (vector2).z,\
+                dest )
+
+#define DOTPRODUCT(x1,y1,z1,x2,y2,z2,dest)\
+\
+  dest = (x1) * (x2) + (y1) * (y2) + (z1) * (z2);
 
 // computes crossproduct of three vectors, which are given as points
 // struct point vector1, vector2, dest
@@ -105,15 +110,6 @@ double getLength(struct point p);
   x = (y1) * (z2) - (y2) * (z1);\
   y = (x2) * (z1) - (x1) * (z2);\
   z = (x1) * (y2) - (x2) * (y1)
-
-#define DOTPRODUCTp(vector1, vector2, dest)\
-    DOTPRODUCT( (vector1).x, (vector1).y, (vector1).z,\
-                (vector2).x, (vector2).y, (vector2).z,\
-                dest )
-
-#define DOTPRODUCT(x1,y1,z1,x2,y2,z2,dest)\
-\
-  dest = (x1) * (x2) + (y1) * (y2) + (z1) * (z2);
 
 // normalizes vector dest
 // struct point dest
@@ -138,11 +134,11 @@ double getLength(struct point p);
 // assigns values x,y,z to point vector dest
 // struct point dest
 // double x,y,z
-#define pMAKE(x1,y1,z1,dest)\
+#define pMAKE(x,y,z,dest)\
 \
-  (dest).x = (x1);\
-  (dest).y = (y1);\
-  (dest).z = (z1);
+  (dest).(x) = (x);\
+  (dest).(y) = (y);\
+  (dest).(z) = (z);
 
 // sums points src1 and src2 to dest
 // struct point src1,src2,dest
@@ -169,10 +165,4 @@ double getLength(struct point p);
   (dest).y = (src).y * (scalar);\
   (dest).z = (src).z * (scalar);
 
-#define pDIVIDE(src,scalar,dest)\
-\
-  (dest).x = (src).x / (scalar);\
-  (dest).y = (src).y / (scalar);\
-  (dest).z = (src).z / (scalar);
 #endif
-

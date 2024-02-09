@@ -48,47 +48,46 @@ void myinit()
   glShadeModel(GL_SMOOTH);
   glEnable(GL_POLYGON_SMOOTH);
   glEnable(GL_LINE_SMOOTH);
-
   // init bounding box planes
-  // plane struct: a, b, c, d, point on plane
+// plane struct: a, b, c, d, point on plane
   for (int face = 0; face < 6; face++) {
       plane side;
       double length;
       double boxSize;
       if (face == 0) {
           // front face
-          side.pOnPlane = point(0, -2, -2);
-          pDIFFERENCE(point(0, -1, -2), side.pOnPlane, side.normal);
+          side.pOnPlane = point(0.0, -2.0, -2.0);
+          pDIFFERENCE(point(0.0, -1.0, -2.0), side.pOnPlane, side.normal);
           pNORMALIZE(side.normal);
       }
       else if (face == 1) {
           // back face
-          side.pOnPlane = point(0, 2, -2);
-          pDIFFERENCE(point(0, 1, -2), side.pOnPlane, side.normal);
+          side.pOnPlane = point(0.0, 2.0, -2.0);
+          pDIFFERENCE(point(0.0, 1.0, -2.0), side.pOnPlane, side.normal);
           pNORMALIZE(side.normal);
       }
       else if (face == 2) {
           // left face
-          side.pOnPlane = point(-2, 0, -2);
-          pDIFFERENCE(point(-1, 0, -2), side.pOnPlane, side.normal);
+          side.pOnPlane = point(-2.0, 0.0, -2.0);
+          pDIFFERENCE(point(-1.0, 0.0, -2.0), side.pOnPlane, side.normal);
           pNORMALIZE(side.normal);
       }
       else if (face == 3) {
           // right face
-          side.pOnPlane = point(2, 0, -2);
-          pDIFFERENCE(point(1, 0, -2), side.pOnPlane, side.normal);
+          side.pOnPlane = point(2.0, 0.0, -2.0);
+          pDIFFERENCE(point(1.0, 0.0, -2.0), side.pOnPlane, side.normal);
           pNORMALIZE(side.normal);
       }
       else if (face == 4) {
           // top face
-          side.pOnPlane = point(0, 2, 0);
-          pDIFFERENCE(point(0, 1, 0), side.pOnPlane, side.normal);
+          side.pOnPlane = point(0.0, 2.0, 0.0);
+          pDIFFERENCE(point(0.0, 1.0, 0.0), side.pOnPlane, side.normal);
           pNORMALIZE(side.normal);
       }
       else if (face == 5) {
           // bottom face
-          side.pOnPlane = point(0, -2, 0);
-          pDIFFERENCE(point(0, -1, 0), side.pOnPlane, side.normal);
+          side.pOnPlane = point(0.0, -2.0, 0.0);
+          pDIFFERENCE(point(0.0, -1.0, 0.0), side.pOnPlane, side.normal);
           pNORMALIZE(side.normal);
       }
       jello.box.push_back(side);
@@ -103,6 +102,7 @@ void myinit()
       jello.box.push_back(inclinedPlane);
   }
   jello.boxSize = 4.0;
+
   return; 
 }
 
@@ -250,8 +250,6 @@ void doIdle()
 {
   char s[20]="picxxxx.ppm";
   int i;
-
-  RK4(&jello);
   
   // save screen to file
   s[3] = 48 + (sprite / 1000);
@@ -329,9 +327,5 @@ int main (int argc, char ** argv)
   glutMainLoop();
 
   return(0);
-}
-
-double getLength(struct point p) {
-    return sqrt((p).x * (p).x + (p).y * (p).y + (p).z * (p).z);
 }
 
