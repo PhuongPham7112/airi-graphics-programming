@@ -22,7 +22,7 @@ int floatToInt(float val) {
     return unholy.i & 0x7FffFF; /* mask off the float's sign and exponent bits */
 }
 
-point HookLaw(double kHook, double restLength, point A, point B) {
+point calculateHookLaw(double kHook, double restLength, point A, point B) {
     // F = (-kH * (|L| - rL)) * (L/|L|)
     point fHook;
     point L;
@@ -35,7 +35,7 @@ point HookLaw(double kHook, double restLength, point A, point B) {
     return fHook;
 }
 
-point Damping(double kDamp, point A, point B, point velA, point velB) {
+point calculateDamping(double kDamp, point A, point B, point velA, point velB) {
     // F = (-kD * ((vA-vB) dot L) / |L|) * (L/|L|)
     point fDamp;
     point L; // a - b = L
@@ -53,8 +53,6 @@ point Damping(double kDamp, point A, point B, point velA, point velB) {
     return fDamp;
 }
 
-// Calculate external force field, add it to point p at (i, j, k)
-// src: https://www.scratchapixel.com/lessons/mathematics-physics-for-computer-graphics/interpolation/trilinear-interpolation.html
 point calculateExternalForce(world* jello, int x, int y, int z) {
     point fExternal = point();
     // External force index in resolution array
@@ -67,9 +65,9 @@ point calculateExternalForce(world* jello, int x, int y, int z) {
     point f110, f111;
 
     // index of the cell inside force field, origin (-2, -2, -2)
-    i = floatToInt((jello->p[x][y][z].x + 2.0) * jello->cubeSizeInv); // pos.x / h
-    j = floatToInt((jello->p[x][y][z].y + 2.0) * jello->cubeSizeInv); // pos.y / h
-    k = floatToInt((jello->p[x][y][z].z + 2.0) * jello->cubeSizeInv); // pos.z / h
+    i = (int)((jello->p[x][y][z].x + 2.0) * jello->cubeSizeInv); // pos.x / h
+    j = (int)((jello->p[x][y][z].y + 2.0) * jello->cubeSizeInv); // pos.y / h
+    k = (int)((jello->p[x][y][z].z + 2.0) * jello->cubeSizeInv); // pos.z / h
 
     // Check if the index is at the wall of the bounding box
     if (i == (jello->resolution - 1)) {
@@ -170,9 +168,9 @@ void computeAcceleration(struct world* jello, struct point a[8][8][8])
                     point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
 
                     // calculate hook force
-                    pSUM(fTotal, HookLaw(jello->kElastic, jello->unrestLength, currentPoint, neighbor), fTotal);
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLength, currentPoint, neighbor), fTotal);
                     // calculate damp force
-                    pSUM(fTotal, Damping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
                 }
                 neighborIdx.clear();
 
@@ -203,9 +201,9 @@ void computeAcceleration(struct world* jello, struct point a[8][8][8])
                     point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
 
                     // calculate hook force
-                    pSUM(fTotal, HookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
                     // calculate damp force
-                    pSUM(fTotal, Damping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
                 }
                 neighborIdx.clear();
 
@@ -238,9 +236,9 @@ void computeAcceleration(struct world* jello, struct point a[8][8][8])
                     point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
 
                     // calculate hook force
-                    pSUM(fTotal, HookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
                     // calculate damp force
-                    pSUM(fTotal, Damping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
                 }
                 neighborIdx.clear();
 
@@ -256,9 +254,9 @@ void computeAcceleration(struct world* jello, struct point a[8][8][8])
                     point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
 
                     // calculate hook force
-                    pSUM(fTotal, HookLaw(jello->kElastic, jello->unrestLengthBend, currentPoint, neighbor), fTotal);
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthBend, currentPoint, neighbor), fTotal);
                     // calculate damp force
-                    pSUM(fTotal, Damping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
                 }
                 neighborIdx.clear();
 
@@ -285,8 +283,8 @@ void computeAcceleration(struct world* jello, struct point a[8][8][8])
                         pMULTIPLY(face.normal, penetration, penetrationForce);
                         pDIFFERENCE(currentPoint, penetrationForce, collisionContact);
 
-                        point fCollisionHook = HookLaw(jello->kCollision, 0.0, collisionContact, currentPoint);
-                        point fCollisionDamp = Damping(jello->dCollision, collisionContact, currentPoint, penetrationForce, currentPointVelocity);
+                        point fCollisionHook = calculateHookLaw(jello->kCollision, 0.0, collisionContact, currentPoint);
+                        point fCollisionDamp = calculateDamping(jello->dCollision, collisionContact, currentPoint, penetrationForce, currentPointVelocity);
 
                         pSUM(fCollisionHook, fCollision, fCollision);
                         pSUM(fCollisionDamp, fCollision, fCollision);
@@ -303,12 +301,6 @@ void computeAcceleration(struct world* jello, struct point a[8][8][8])
             }
         }
     }
-}
-
-
-
-double distance(point A, point B) {
-    return sqrt(pow(A.x - B.x, 2) + pow(A.y - B.y, 2) + pow(A.z - B.z, 2));
 }
 
 /* performs one step of Euler Integration */
