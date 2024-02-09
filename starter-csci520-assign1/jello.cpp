@@ -80,14 +80,14 @@ void myinit()
       }
       else if (face == 4) {
           // top face
-          side.pOnPlane = point(0.0, 2.0, 0.0);
-          pDIFFERENCE(point(0.0, 1.0, 0.0), side.pOnPlane, side.normal);
+          side.pOnPlane = point(0.0, 0.0, 2.0);
+          pDIFFERENCE(point(0.0, 0.0, 1.0), side.pOnPlane, side.normal);
           pNORMALIZE(side.normal);
       }
       else if (face == 5) {
           // bottom face
-          side.pOnPlane = point(0.0, -2.0, 0.0);
-          pDIFFERENCE(point(0.0, -1.0, 0.0), side.pOnPlane, side.normal);
+          side.pOnPlane = point(0.0, 0.0, -2.0);
+          pDIFFERENCE(point(0.0, -0.0, 1.0), side.pOnPlane, side.normal);
           pNORMALIZE(side.normal);
       }
       jello.box.push_back(side);

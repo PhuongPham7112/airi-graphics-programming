@@ -57,6 +57,8 @@ point calculateExternalForce(world* jello, int x, int y, int z) {
     point fExternal = point();
     // External force index in resolution array
     int i, j, k;
+    double cubeSize = jello->boxSize / (jello->resolution - 1.0);
+    double cubeSizeInv = 1.0 / cubeSize;
 
     // Forces at 8 corners in a specific grid surrounding the point p
     point f000, f001;
@@ -65,9 +67,9 @@ point calculateExternalForce(world* jello, int x, int y, int z) {
     point f110, f111;
 
     // index of the cell inside force field, origin (-2, -2, -2)
-    i = (int)((jello->p[x][y][z].x + 2.0) * jello->cubeSizeInv); // pos.x / h
-    j = (int)((jello->p[x][y][z].y + 2.0) * jello->cubeSizeInv); // pos.y / h
-    k = (int)((jello->p[x][y][z].z + 2.0) * jello->cubeSizeInv); // pos.z / h
+    i = (int)((jello->p[x][y][z].x + 2.0) * cubeSizeInv); // pos.x / h
+    j = (int)((jello->p[x][y][z].y + 2.0) * cubeSizeInv); // pos.y / h
+    k = (int)((jello->p[x][y][z].z + 2.0) * cubeSizeInv); // pos.z / h
 
     // Check if the index is at the wall of the bounding box
     if (i == (jello->resolution - 1)) {
@@ -104,12 +106,12 @@ point calculateExternalForce(world* jello, int x, int y, int z) {
         f111 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + (j + 1) * jello->resolution + (k + 1))];
 
         // 3D interpolation, find coefficient, think of these as weights: alpha, beta, gamma coefficients
-        double x0 = -2.0 + jello->cubeSize * i;
-        double y0 = -2.0 + jello->cubeSize * j;
-        double z0 = -2.0 + jello->cubeSize * k;
-        double px = (jello->p[x][y][z].x - x0) * jello->cubeSizeInv; // (x - x0) / len
-        double py = (jello->p[x][y][z].y - y0) * jello->cubeSizeInv; // (y - y0) / len
-        double pz = (jello->p[x][y][z].z - z0) * jello->cubeSizeInv; // (z - z0) / len
+        double x0 = -2.0 + cubeSize * i;
+        double y0 = -2.0 + cubeSize * j;
+        double z0 = -2.0 + cubeSize * k;
+        double px = (jello->p[x][y][z].x - x0) * cubeSizeInv; // (x - x0) / len
+        double py = (jello->p[x][y][z].y - y0) * cubeSizeInv; // (y - y0) / len
+        double pz = (jello->p[x][y][z].z - z0) * cubeSizeInv; // (z - z0) / len
 
         pMULTIPLY(f000, (1.0 - px) * (1.0 - py) * (1.0 - pz), f000);
         pSUM(fExternal, f000, fExternal);
