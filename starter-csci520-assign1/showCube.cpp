@@ -211,6 +211,7 @@ void showCube(struct world * jello)
             glFrontFace(GL_CW); // flip definition of orientation
          
           glBegin(GL_TRIANGLE_STRIP);
+          // glEnable(GL_TEXTURE_2D)
           for (i=0; i<=7; i++)
           {
             glNormal3f(normal[i][j].x / counter[i][j],normal[i][j].y / counter[i][j],
@@ -220,6 +221,7 @@ void showCube(struct world * jello)
               normal[i][j-1].z / counter[i][j-1]);
             glVertex3f(NODE(face,i,j-1).x, NODE(face,i,j-1).y, NODE(face,i,j-1).z);
           }
+          // glDisable(GL_TEXTURE_2D);
           glEnd();
         }
         
@@ -240,11 +242,11 @@ void showCube(struct world * jello)
         point t; // y
         pDIFFERENCE(p2, p1, t);
         pNORMALIZE(t);
-        pMULTIPLY(t, D, t);
 
         point b; // x
         CROSSPRODUCTp(t, incPlane.normal, b);
         pMULTIPLY(b, D, b);
+        pMULTIPLY(t, D, t);
 
         point v1; // = p1 - t - b;
         pDIFFERENCE(p1, t, v1);
@@ -262,7 +264,6 @@ void showCube(struct world * jello)
         pDIFFERENCE(p1, t, v4);
         pSUM(v4, b, v4);
 
-        // rendering
         // triangle 1
         glColor4f(1, 0, 0, 1);
         glVertex3f(v2.x, v2.y, v2.z);
@@ -341,10 +342,7 @@ void showBoundingBox()
   {
     glVertex3f(2,-2,j);
     glVertex3f(2,2,j);
-  }
-
-  // inclined plane
-  
+  }  
   
   glEnd();
 
