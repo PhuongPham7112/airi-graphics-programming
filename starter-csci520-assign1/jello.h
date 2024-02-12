@@ -146,7 +146,7 @@ extern struct world jello;
   (dest).y = (src1).y + (src2).y;\
   (dest).z = (src1).z + (src2).z;
 
-// dest = src2 - src1
+// dest = src1 - src2
 // struct point src1,src2,dest
 #define pDIFFERENCE(src1,src2,dest)\
 \

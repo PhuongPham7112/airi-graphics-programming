@@ -57,7 +57,6 @@ void showCube(struct world * jello)
 
   
   #define NODE(face,i,j) (*((struct point * )(jello->p) + pointMap((face),(i),(j))))
-
   
   #define PROCESS_NEIGHBOUR(di,dj,dk) \
     ip=i+(di);\
@@ -226,7 +225,65 @@ void showCube(struct world * jello)
         
         
     }  
+
+    if (jello->incPlanePresent)
+    {
+        // render a 4x4 plane
+        glBegin(GL_TRIANGLE_STRIP);
+
+        plane incPlane = jello->box.back();
+        point p1 = point(0.0, 0.0, -jello->d / jello->c);
+        point p2 = point(1.0, 1.0, -(jello->a + jello->b + jello->d) / jello->c);
+        double D = 1.2; // diameter;
+
+        double length;
+        point t; // y
+        pDIFFERENCE(p2, p1, t);
+        pNORMALIZE(t);
+        pMULTIPLY(t, D, t);
+
+        point b; // x
+        CROSSPRODUCTp(t, incPlane.normal, b);
+        pMULTIPLY(b, D, b);
+
+        point v1; // = p1 - t - b;
+        pDIFFERENCE(p1, t, v1);
+        pDIFFERENCE(v1, b, v1);
+
+        point v2; // = p1 + t - b;
+        pSUM(p1, t, v2);
+        pDIFFERENCE(v2, b, v2);
+
+        point v3; // = p1 + t + b;
+        pSUM(p1, t, v3);
+        pSUM(v3, b, v3);
+
+        point v4; // = p1 - t + b;
+        pDIFFERENCE(p1, t, v4);
+        pSUM(v4, b, v4);
+
+        // rendering
+        // triangle 1
+        glColor4f(1, 0, 0, 1);
+        glVertex3f(v2.x, v2.y, v2.z);
+        glColor4f(1, 0, 0, 1);
+        glVertex3f(v1.x, v1.y, v1.z);
+        glColor4f(1, 0, 0, 1);
+        glVertex3f(v4.x, v4.y, v4.z);
+        
+        // triangle 2
+        glColor4f(1, 0, 0, 1);
+        glVertex3f(v2.x, v2.y, v2.z);
+        glColor4f(1, 0, 0, 1);
+        glVertex3f(v3.x, v3.y, v3.z);
+        glColor4f(1, 0, 0, 1);
+        glVertex3f(v4.x, v4.y, v4.z);
+
+        glEnd();
+    }
   } // end for loop over faces
+
+  
   glFrontFace(GL_CCW);
 }
 
@@ -285,6 +342,9 @@ void showBoundingBox()
     glVertex3f(2,-2,j);
     glVertex3f(2,2,j);
   }
+
+  // inclined plane
+  
   
   glEnd();
 
