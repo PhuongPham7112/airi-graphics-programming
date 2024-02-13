@@ -5,16 +5,16 @@
 #include <string>
 
 // Texture
-extern GLuint texHandle;
+extern GLuint textureID;
 
-struct BitMapFile
+struct BMP
 {
   int sizeX;
   int sizeY;
   unsigned char *data;
 };
 
-BitMapFile *getBMPData(std::string filename);
+BMP* getBMPData(std::string filename);
 void loadTextures(std::string filename);
 
 #endif

@@ -3,11 +3,11 @@
 
 using namespace std;
 
-GLuint texHandle; // texture
+GLuint textureID; // texture
 
-BitMapFile *getBMPData(string filename)
+BMP* getBMPData(string filename)
 {
-	BitMapFile *bmp = new BitMapFile;
+	BMP* bmp = new BMP;
 	unsigned int size, offset, headerSize;
   
 	// Read input file name.
@@ -48,13 +48,13 @@ BitMapFile *getBMPData(string filename)
 void loadTextures(string filename)
 {
 	// Local storage for bmp image data.
-	BitMapFile *image[1];
+	BMP* image[1];
    
 	// Load the texture.
 	image[0] = getBMPData(filename);
 
 	// Activate texture index texture[0]. 
-	glBindTexture(GL_TEXTURE_2D, texHandle); 
+	glBindTexture(GL_TEXTURE_2D, textureID);
 
 	// Set texture parameters for wrapping.
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);

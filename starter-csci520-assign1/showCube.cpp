@@ -216,7 +216,7 @@ void showCube(struct world * jello)
 
               // Before we draw something we call
               glEnable(GL_TEXTURE_2D);
-              glBindTexture(GL_TEXTURE_2D, texHandle);
+              glBindTexture(GL_TEXTURE_2D, textureID);
               glBegin(GL_TRIANGLE_STRIP);
 
               int texCounter = 0;

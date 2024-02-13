@@ -51,7 +51,7 @@ void myinit()
   glEnable(GL_LINE_SMOOTH);
 
   // setting up texturing
-  glGenTextures(1, &texHandle); // allocate a texture name
+  glGenTextures(1, &textureID); // allocate a texture name
   loadTextures("textures/Gojo.bmp");
 
 // plane struct: a, b, c, d, point on plane
