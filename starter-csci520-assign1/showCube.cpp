@@ -223,20 +223,22 @@ void showCube(struct world * jello)
               for (i = 0; i <= 7; i++)
               {
                   // Assign texel
-                  if (texCounter % 4 == 0) glTexCoord2f(0, 1);
+                  double texelCoordX = 0.25;
+                  double texelCoordY = 0.25;
+                  if (texCounter % 4 == 0) glTexCoord2f(0, texelCoordY);
                   else if (texCounter % 4 == 1) glTexCoord2f(0, 0);
-                  else if (texCounter % 4 == 2) glTexCoord2f(1, 1);
-                  else if (texCounter % 4 == 3) glTexCoord2f(1, 0);
+                  else if (texCounter % 4 == 2) glTexCoord2f(texelCoordX, texelCoordY);
+                  else if (texCounter % 4 == 3) glTexCoord2f(texelCoordX, 0);
                   glNormal3f(normal[i][j].x / counter[i][j], normal[i][j].y / counter[i][j],
                       normal[i][j].z / counter[i][j]);
                   glVertex3f(NODE(face, i, j).x, NODE(face, i, j).y, NODE(face, i, j).z);
                   texCounter++;
 
                   // Assign texel
-                  if (texCounter % 4 == 0) glTexCoord2f(0, 1);
+                  if (texCounter % 4 == 0) glTexCoord2f(0, texelCoordY);
                   else if (texCounter % 4 == 1) glTexCoord2f(0, 0);
-                  else if (texCounter % 4 == 2) glTexCoord2f(1, 1);
-                  else if (texCounter % 4 == 3) glTexCoord2f(1, 0);
+                  else if (texCounter % 4 == 2) glTexCoord2f(texelCoordX, texelCoordY);
+                  else if (texCounter % 4 == 3) glTexCoord2f(texelCoordX, 0);
                   glNormal3f(normal[i][j - 1].x / counter[i][j - 1], normal[i][j - 1].y / counter[i][j - 1],
                       normal[i][j - 1].z / counter[i][j - 1]);
                   glVertex3f(NODE(face, i, j - 1).x, NODE(face, i, j - 1).y, NODE(face, i, j - 1).z);
