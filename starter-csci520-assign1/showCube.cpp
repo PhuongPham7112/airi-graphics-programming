@@ -7,6 +7,10 @@
 
 #include "jello.h"
 #include "showCube.h"
+#include "pic.h"
+
+// texturing
+GLuint textureID;
 
 int pointMap(int side, int i, int j)
 {
@@ -35,6 +39,27 @@ int pointMap(int side, int i, int j)
   }
 
   return r;
+}
+
+// To load pic for texturing
+void loadTexture(char* texFile)
+{
+    int nx, ny;
+    if (ppm_get_size(texFile, &nx, &ny))
+    {
+        Pic* image = ppm_read(texFile, pic_alloc(nx, ny, 3, NULL));
+        glGenTextures(1, &textureID); // allocate a texture name
+        glBindTexture(GL_TEXTURE_2D, textureID);  // select our current texture
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST); // for small texture are, bilinear filtering and finding the closest mipmap
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // for large texture area, bilinear filtering the original image
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // wraping texture over the edges - repeat
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        // We only have RGB data in our array. It would be better to have an extra component, but this will do.
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, image->nx, image->ny, 0, GL_RGB, GL_UNSIGNED_BYTE, image->pix);
+        // Before we draw something we call
+        glBindTexture(GL_TEXTURE_2D, textureID);
+    }
+    return;
 }
 
 void showCube(struct world * jello)
@@ -71,9 +96,9 @@ void showCube(struct world * jello)
       glVertex3f(jello->p[i][j][k].x,jello->p[i][j][k].y,jello->p[i][j][k].z);\
       glVertex3f(jello->p[ip][jp][kp].x,jello->p[ip][jp][kp].y,jello->p[ip][jp][kp].z);\
     }\
-
  
-  if (viewingMode==0) // render wireframe
+  // render wireframe
+  if (viewingMode==0) 
   {
     glLineWidth(1);
     glPointSize(5);
@@ -152,91 +177,102 @@ void showCube(struct world * jello)
   
   else
   {
-    glPolygonMode(GL_FRONT, GL_FILL); 
-    
-    for (face=1; face <= 6; face++) 
-      // face == face of a cube
-      // 1 = bottom, 2 = front, 3 = left, 4 = right, 5 = far, 6 = top
-    {
-      
-      if ((face==1) || (face==3) || (face==5))
-        faceFactor=-1; // flip orientation
-      else
-        faceFactor=1;
-      
+      glPolygonMode(GL_FRONT, GL_FILL);
 
-      for (i=0; i <= 7; i++) // reset buffers
-        for (j=0; j <= 7; j++)
-        {
-          normal[i][j].x=0;normal[i][j].y=0;normal[i][j].z=0;
-          counter[i][j]=0;
-        }
+      for (face = 1; face <= 6; face++)
+          // face == face of a cube
+          // 1 = bottom, 2 = front, 3 = left, 4 = right, 5 = far, 6 = top
+      {
 
-      /* process triangles, accumulate normals for Gourad shading */
-  
-      for (i=0; i <= 6; i++)
-        for (j=0; j <= 6; j++) // process block (i,j)
-        {
-          pDIFFERENCE(NODE(face,i+1,j),NODE(face,i,j),r1); // first triangle
-          pDIFFERENCE(NODE(face,i,j+1),NODE(face,i,j),r2);
-          CROSSPRODUCTp(r1,r2,r3); pMULTIPLY(r3,faceFactor,r3);
-          pNORMALIZE(r3);
-          pSUM(normal[i+1][j],r3,normal[i+1][j]);
-          counter[i+1][j]++;
-          pSUM(normal[i][j+1],r3,normal[i][j+1]);
-          counter[i][j+1]++;
-          pSUM(normal[i][j],r3,normal[i][j]);
-          counter[i][j]++;
-
-          pDIFFERENCE(NODE(face,i,j+1),NODE(face,i+1,j+1),r1); // second triangle
-          pDIFFERENCE(NODE(face,i+1,j),NODE(face,i+1,j+1),r2);
-          CROSSPRODUCTp(r1,r2,r3); pMULTIPLY(r3,faceFactor,r3);
-          pNORMALIZE(r3);
-          pSUM(normal[i+1][j],r3,normal[i+1][j]);
-          counter[i+1][j]++;
-          pSUM(normal[i][j+1],r3,normal[i][j+1]);
-          counter[i][j+1]++;
-          pSUM(normal[i+1][j+1],r3,normal[i+1][j+1]);
-          counter[i+1][j+1]++;
-        }
-
-      
-        /* the actual rendering */
-        for (j=1; j<=7; j++) 
-        {
-
-          if (faceFactor  > 0)
-            glFrontFace(GL_CCW); // the usual definition of front face
+          if ((face == 1) || (face == 3) || (face == 5))
+              faceFactor = -1; // flip orientation
           else
-            glFrontFace(GL_CW); // flip definition of orientation
-         
-          glBegin(GL_TRIANGLE_STRIP);
-          // glEnable(GL_TEXTURE_2D)
-          for (i=0; i<=7; i++)
-          {
-            glNormal3f(normal[i][j].x / counter[i][j],normal[i][j].y / counter[i][j],
-              normal[i][j].z / counter[i][j]);
-            glVertex3f(NODE(face,i,j).x, NODE(face,i,j).y, NODE(face,i,j).z);
-            glNormal3f(normal[i][j-1].x / counter[i][j-1],normal[i][j-1].y/ counter[i][j-1],
-              normal[i][j-1].z / counter[i][j-1]);
-            glVertex3f(NODE(face,i,j-1).x, NODE(face,i,j-1).y, NODE(face,i,j-1).z);
-          }
-          // glDisable(GL_TEXTURE_2D);
-          glEnd();
-        }
-        
-        
-    }  
+              faceFactor = 1;
 
+
+          for (i = 0; i <= 7; i++) // reset buffers
+              for (j = 0; j <= 7; j++)
+              {
+                  normal[i][j].x = 0; normal[i][j].y = 0; normal[i][j].z = 0;
+                  counter[i][j] = 0;
+              }
+
+          /* process triangles, accumulate normals for Gourad shading */
+
+          for (i = 0; i <= 6; i++)
+              for (j = 0; j <= 6; j++) // process block (i,j)
+              {
+                  pDIFFERENCE(NODE(face, i + 1, j), NODE(face, i, j), r1); // first triangle
+                  pDIFFERENCE(NODE(face, i, j + 1), NODE(face, i, j), r2);
+                  CROSSPRODUCTp(r1, r2, r3); pMULTIPLY(r3, faceFactor, r3);
+                  pNORMALIZE(r3);
+                  pSUM(normal[i + 1][j], r3, normal[i + 1][j]);
+                  counter[i + 1][j]++;
+                  pSUM(normal[i][j + 1], r3, normal[i][j + 1]);
+                  counter[i][j + 1]++;
+                  pSUM(normal[i][j], r3, normal[i][j]);
+                  counter[i][j]++;
+
+                  pDIFFERENCE(NODE(face, i, j + 1), NODE(face, i + 1, j + 1), r1); // second triangle
+                  pDIFFERENCE(NODE(face, i + 1, j), NODE(face, i + 1, j + 1), r2);
+                  CROSSPRODUCTp(r1, r2, r3); pMULTIPLY(r3, faceFactor, r3);
+                  pNORMALIZE(r3);
+                  pSUM(normal[i + 1][j], r3, normal[i + 1][j]);
+                  counter[i + 1][j]++;
+                  pSUM(normal[i][j + 1], r3, normal[i][j + 1]);
+                  counter[i][j + 1]++;
+                  pSUM(normal[i + 1][j + 1], r3, normal[i + 1][j + 1]);
+                  counter[i + 1][j + 1]++;
+              }
+
+
+          /* the actual rendering */
+          for (j = 1; j <= 7; j++)
+          {
+
+              if (faceFactor > 0)
+                  glFrontFace(GL_CCW); // the usual definition of front face
+              else
+                  glFrontFace(GL_CW); // flip definition of orientation
+
+              glBegin(GL_TRIANGLE_STRIP);
+              for (i = 0; i <= 7; i++)
+              {
+
+                  glNormal3f(normal[i][j].x / counter[i][j], normal[i][j].y / counter[i][j],
+                      normal[i][j].z / counter[i][j]);
+                  glVertex3f(NODE(face, i, j).x, NODE(face, i, j).y, NODE(face, i, j).z);
+
+                  glNormal3f(normal[i][j - 1].x / counter[i][j - 1], normal[i][j - 1].y / counter[i][j - 1],
+                      normal[i][j - 1].z / counter[i][j - 1]);
+                  glVertex3f(NODE(face, i, j - 1).x, NODE(face, i, j - 1).y, NODE(face, i, j - 1).z);
+              }
+              glEnd();
+          }
+      }
+  }
+  glFrontFace(GL_CCW);
+}
+
+void showIncPlane(struct world* jello)
+{
     if (jello->incPlanePresent)
     {
+        // setting up texturing
+        if (jello->cubeTexture != NULL)
+        {
+            loadTexture(jello->cubeTexture);
+           
+        }
+
         // render a 4x4 plane
+        glEnable(GL_TEXTURE_2D);
         glBegin(GL_TRIANGLE_STRIP);
 
         plane incPlane = jello->box.back();
         point p1 = point(0.0, 0.0, -jello->d / jello->c);
         point p2 = point(1.0, 1.0, -(jello->a + jello->b + jello->d) / jello->c);
-        double D = 1.2; // diameter;
+        double D = 4.0; // diameter;
 
         double length;
         point t; // y
@@ -245,6 +281,9 @@ void showCube(struct world * jello)
 
         point b; // x
         CROSSPRODUCTp(t, incPlane.normal, b);
+        pNORMALIZE(b);
+
+        // combine with diameter
         pMULTIPLY(b, D, b);
         pMULTIPLY(t, D, t);
 
@@ -265,27 +304,30 @@ void showCube(struct world * jello)
         pSUM(v4, b, v4);
 
         // triangle 1
-        glColor4f(1, 0, 0, 1);
+        //glColor4f(1, 0, 0, 1);
+        glTexCoord2f(0.0, 0.0);
         glVertex3f(v2.x, v2.y, v2.z);
-        glColor4f(1, 0, 0, 1);
+        //glColor4f(1, 0, 0, 1);
+        glTexCoord2f(1.0, 0.0);
         glVertex3f(v1.x, v1.y, v1.z);
-        glColor4f(1, 0, 0, 1);
+        //glColor4f(1, 0, 0, 1);
+        glTexCoord2f(0.0, 0.0);
         glVertex3f(v4.x, v4.y, v4.z);
-        
+
         // triangle 2
-        glColor4f(1, 0, 0, 1);
+        //glColor4f(1, 0, 0, 1);
+        glTexCoord2f(0.0, 0.0);
         glVertex3f(v2.x, v2.y, v2.z);
-        glColor4f(1, 0, 0, 1);
+        //glColor4f(1, 0, 0, 1);
+        glTexCoord2f(1.0, 0.0);
         glVertex3f(v3.x, v3.y, v3.z);
-        glColor4f(1, 0, 0, 1);
+        //glColor4f(1, 0, 0, 1);
+        glTexCoord2f(0.0, 0.0);
         glVertex3f(v4.x, v4.y, v4.z);
 
         glEnd();
+        glDisable(GL_TEXTURE_2D);
     }
-  } // end for loop over faces
-
-  
-  glFrontFace(GL_CCW);
 }
 
 void showBoundingBox()

@@ -27,7 +27,7 @@ int g_iLeftMouseButton,g_iMiddleMouseButton,g_iRightMouseButton;
 int sprite=0;
 
 // these variables control what is displayed on screen
-int shear=0, bend=0, structural=1, pause=0, viewingMode=0, saveScreenToFile=0;
+int shear=0, bend=0, structural=1, pause=0, viewingMode=1, saveScreenToFile=0;
 
 struct world jello;
 
@@ -234,9 +234,11 @@ void display()
   // enable lighting
   glEnable(GL_LIGHTING);    
   glEnable(GL_DEPTH_TEST);
+  glDisable(GL_BLEND);
 
   // show the cube
   showCube(&jello);
+  showIncPlane(&jello);
 
   glDisable(GL_LIGHTING);
 
@@ -290,8 +292,13 @@ int main (int argc, char ** argv)
   if (argc<2)
   {  
     printf ("Oops! You didn't say the jello world file!\n");
-    printf ("Usage: %s [worldfile]\n", argv[0]);
+    printf ("Usage: %s [worldfile] [optional texture file]\n", argv[0]);
     exit(0);
+  }
+
+  if (argc == 3)
+  {
+      jello.cubeTexture = argv[2];
   }
 
   readWorld(argv[1],&jello);
