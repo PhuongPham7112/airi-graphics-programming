@@ -10,14 +10,15 @@
 #include <iostream>
 #include <vector>
 
-union unholy_t { /* a union between a float and an integer */
-public:
-    float f;
+// source: https://www.cs.uaf.edu/2009/fall/cs301/lecture/12_09_float_to_int.html
+union float2int
+{
     int i;
+    float f;
 };
 
-int floatToInt(float val) {
-    unholy_t unholy;
+int convert(float val) {
+    float2int unholy;
     unholy.f = val + (1 << 23); /* scrape off the fraction bits with the weird constant */
     return unholy.i & 0x7FffFF; /* mask off the float's sign and exponent bits */
 }
@@ -54,11 +55,11 @@ point calculateDamping(double kDamp, point A, point B, point velA, point velB) {
 }
 
 point calculateExternalForce(world* jello, int x, int y, int z) {
-    point fExternal = point();
     // External force index in resolution array
     int i, j, k;
     double cubeSize = jello->boxSize / (jello->resolution - 1.0);
     double cubeSizeInv = 1.0 / cubeSize;
+    point fExternal = point();
 
     // Forces at 8 corners in a specific grid surrounding the point p
     point f000, f001;
@@ -67,9 +68,9 @@ point calculateExternalForce(world* jello, int x, int y, int z) {
     point f110, f111;
 
     // index of the cell inside force field, origin (-2, -2, -2)
-    i = (int)((jello->p[x][y][z].x + 2.0) * cubeSizeInv); // pos.x / h
-    j = (int)((jello->p[x][y][z].y + 2.0) * cubeSizeInv); // pos.y / h
-    k = (int)((jello->p[x][y][z].z + 2.0) * cubeSizeInv); // pos.z / h
+    i = convert((jello->p[x][y][z].x + 2.0) * cubeSizeInv); // pos.x / h
+    j = convert((jello->p[x][y][z].y + 2.0) * cubeSizeInv); // pos.y / h
+    k = convert((jello->p[x][y][z].z + 2.0) * cubeSizeInv); // pos.z / h
 
     // Check if the index is at the wall of the bounding box
     if (i == (jello->resolution - 1)) {
@@ -95,13 +96,10 @@ point calculateExternalForce(world* jello, int x, int y, int z) {
     if (((i >= 0) && (i <= jello->resolution - 1)) && ((j >= 0) && (j <= jello->resolution - 1)) && ((k >= 0) && (k <= jello->resolution - 1))) {
         f000 = jello->forceField[(i * jello->resolution * jello->resolution + j * jello->resolution + k)];
         f001 = jello->forceField[(i * jello->resolution * jello->resolution + j * jello->resolution + (k + 1))];
-
         f010 = jello->forceField[(i * jello->resolution * jello->resolution + (j + 1) * jello->resolution + k)];
         f011 = jello->forceField[(i * jello->resolution * jello->resolution + (j + 1) * jello->resolution + (k + 1))];
-
         f100 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + j * jello->resolution + k)];
         f101 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + j * jello->resolution + (k + 1))];
-
         f110 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + (j + 1) * jello->resolution + k)];
         f111 = jello->forceField[((i + 1) * jello->resolution * jello->resolution + (j + 1) * jello->resolution + (k + 1))];
 

@@ -11,4 +11,5 @@ Airi Pham
 How to run: Bin/Debug/jello world/jello.w
 - Texture cube
 - Inclined plane collision & render
-- Customize lighting
+- Customize lighting and material
+- Optimized conversion from float to int
