@@ -58,6 +58,12 @@ void mouseMotionDrag(int x, int y)
     g_vMousePos[0] = x;
     g_vMousePos[1] = y;
   }
+
+  if (g_iRightMouseButton)
+  {
+      // convert mouse delta to force on every point
+      
+  }
 }
 
 void mouseMotion (int x, int y)

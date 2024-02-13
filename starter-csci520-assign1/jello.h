@@ -73,6 +73,7 @@ struct world
     struct point* forceField; // pointer to the array of values of the force field
     struct point p[8][8][8]; // position of the 512 control points
     struct point v[8][8][8]; // velocities of the 512 control points
+    struct point mouseForce;
     std::vector<struct plane> box;
     double boxSize = 4.0;
     double unrestLength = 1.0 / 7.0;
