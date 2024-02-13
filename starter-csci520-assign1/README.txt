@@ -9,7 +9,7 @@ Airi Pham
 <Description of what you have accomplished>
 <Also, explain any extra credit that you have implemented.>
 How to run: Bin/Debug/jello world/jello.w
-- Texture cube
-- Inclined plane collision & render
+- Textured cube with hand-drawn texture image
+- Inclined plane collision logic & render
 - Customize lighting and material
 - Optimized conversion from float to int
