@@ -146,119 +146,361 @@ void computeAcceleration(struct world* jello, struct point a[8][8][8])
     // a_ith at point ith = (F hook at ith + F damp at ith + F ext at ith) / mass 
     int maxIdx = 7;
     int minIdx = 0;
+    point currentPoint;
+    point currentPointVelocity;
+    point neighbor;
+    point neighborVelocity;
     for (int i = minIdx; i <= maxIdx; i++) {
         for (int j = minIdx; j <= maxIdx; j++) {
             for (int k = minIdx; k <= maxIdx; k++) { // at point [i][j][k]                
                 // find sum
                 point fTotal = point(0.0, 0.0, 0.0);
+                currentPoint = jello->p[i][j][k];
+                currentPointVelocity = jello->v[i][j][k];
 
-                point currentPoint = jello->p[i][j][k];
-                point currentPointVelocity = jello->v[i][j][k];
-
-                // find structural neightbors: 6 immediate neighbors
-                std::vector<indexStruct> neighborIdx;
-                if (i > minIdx) neighborIdx.push_back(indexStruct(i - 1, j, k));
-                if (i < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j, k));
-                if (j > minIdx) neighborIdx.push_back(indexStruct(i, j - 1, k));
-                if (j < maxIdx) neighborIdx.push_back(indexStruct(i, j + 1, k));
-                if (k > minIdx) neighborIdx.push_back(indexStruct(i, j, k - 1));
-                if (k < maxIdx) neighborIdx.push_back(indexStruct(i, j, k + 1));
-                for (indexStruct idx : neighborIdx) {
-                    point neighbor = jello->p[idx.x][idx.y][idx.z];
-                    point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
-
+                // structural neightbors: 6 immediate neighbors
+                if (i > minIdx) // neighborIdx.push_back(indexStruct(i - 1, j, k));
+                {
+                    neighbor = jello->p[i - 1][j][k];
+                    neighborVelocity = jello->v[i - 1][j][k];
                     // calculate hook force
                     pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLength, currentPoint, neighbor), fTotal);
                     // calculate damp force
                     pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
                 }
-                neighborIdx.clear();
-
-                // shear neighbors
-                if (i < maxIdx) {
-                    if (j < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k));
-                    if (j > minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k));
-                    if (k > minIdx) neighborIdx.push_back(indexStruct(i + 1, j, k - 1));
-                    if (k < maxIdx) neighborIdx.push_back(indexStruct(i + 1, j, k + 1));
-                }
-                if (i > minIdx) {
-                    if (j < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k));
-                    if (j > minIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k));
-                    if (k > minIdx) neighborIdx.push_back(indexStruct(i - 1, j, k - 1));
-                    if (k < maxIdx) neighborIdx.push_back(indexStruct(i - 1, j, k + 1));
-                }
-                if (j < maxIdx) {
-                    if (k < maxIdx) neighborIdx.push_back(indexStruct(i, j + 1, k + 1));
-                    if (k > minIdx) neighborIdx.push_back(indexStruct(i, j + 1, k - 1));
-                }
-                if (j > minIdx) {
-                    if (k < maxIdx) neighborIdx.push_back(indexStruct(i, j - 1, k + 1));
-                    if (k > minIdx) neighborIdx.push_back(indexStruct(i, j - 1, k - 1));
-                }
-
-                for (indexStruct idx : neighborIdx) {
-                    point neighbor = jello->p[idx.x][idx.y][idx.z];
-                    point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
-
+                if (i < maxIdx) // neighborIdx.push_back(indexStruct(i + 1, j, k));
+                {
+                    neighbor = jello->p[i + 1][j][k];
+                    neighborVelocity = jello->v[i + 1][j][k];
                     // calculate hook force
-                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLength, currentPoint, neighbor), fTotal);
                     // calculate damp force
                     pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
                 }
-                neighborIdx.clear();
+                if (j > minIdx) // neighborIdx.push_back(indexStruct(i, j - 1, k));
+                {
+                    neighbor = jello->p[i][j - 1][k];
+                    neighborVelocity = jello->v[i][j - 1][k];
+                    // calculate hook force
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLength, currentPoint, neighbor), fTotal);
+                    // calculate damp force
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                }
+                if (j < maxIdx) // neighborIdx.push_back(indexStruct(i, j + 1, k));
+                {
+                    neighbor = jello->p[i][j + 1][k];
+                    neighborVelocity = jello->v[i][j + 1][k];
+                    // calculate hook force
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLength, currentPoint, neighbor), fTotal);
+                    // calculate damp force
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                }
+                if (k > minIdx) // neighborIdx.push_back(indexStruct(i, j, k - 1));
+                {
+                    neighbor = jello->p[i][j][k - 1];
+                    neighborVelocity = jello->v[i][j][k - 1];
+                    // calculate hook force
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLength, currentPoint, neighbor), fTotal);
+                    // calculate damp force
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                }
+                if (k < maxIdx) // neighborIdx.push_back(indexStruct(i, j, k + 1));
+                {
+                    neighbor = jello->p[i][j][k + 1];
+                    neighborVelocity = jello->v[i][j][k + 1];
+                    // calculate hook force
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLength, currentPoint, neighbor), fTotal);
+                    // calculate damp force
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                }
+
+                // shear neighbors
+                if (i < maxIdx) {
+                    if (j < maxIdx) // neighborIdx.push_back(indexStruct(i + 1, j + 1, k));
+                    {
+                        neighbor = jello->p[i + 1][j + 1][k];
+                        neighborVelocity = jello->v[i + 1][j + 1][k];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                    if (j > minIdx) // neighborIdx.push_back(indexStruct(i + 1, j - 1, k));
+                    {
+                        neighbor = jello->p[i + 1][j - 1][k];
+                        neighborVelocity = jello->v[i + 1][j - 1][k];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                    if (k > minIdx) // neighborIdx.push_back(indexStruct(i + 1, j, k - 1));
+                    {
+                        neighbor = jello->p[i + 1][j][k - 1];
+                        neighborVelocity = jello->v[i + 1][j][k - 1];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                    if (k < maxIdx) // neighborIdx.push_back(indexStruct(i + 1, j, k + 1));
+                    {
+                        neighbor = jello->p[i + 1][j][k + 1];
+                        neighborVelocity = jello->v[i + 1][j][k + 1];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                }
+                if (i > minIdx) {
+                    if (j < maxIdx) // neighborIdx.push_back(indexStruct(i + 1, j + 1, k));
+                    {
+                        neighbor = jello->p[i - 1][j + 1][k];
+                        neighborVelocity = jello->v[i - 1][j + 1][k];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                    if (j > minIdx) // neighborIdx.push_back(indexStruct(i + 1, j - 1, k));
+                    {
+                        neighbor = jello->p[i - 1][j - 1][k];
+                        neighborVelocity = jello->v[i - 1][j - 1][k];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                    if (k > minIdx) // neighborIdx.push_back(indexStruct(i + 1, j, k - 1));
+                    {
+                        neighbor = jello->p[i - 1][j][k - 1];
+                        neighborVelocity = jello->v[i - 1][j][k - 1];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                    if (k < maxIdx) // neighborIdx.push_back(indexStruct(i + 1, j, k + 1));
+                    {
+                        neighbor = jello->p[i - 1][j][k + 1];
+                        neighborVelocity = jello->v[i - 1][j][k + 1];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                }
+                if (j < maxIdx) {
+                    if (k > minIdx) // neighborIdx.push_back(indexStruct(i + 1, j, k - 1));
+                    {
+                        neighbor = jello->p[i][j + 1][k - 1];
+                        neighborVelocity = jello->v[i][j + 1][k - 1];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                    if (k < maxIdx) // neighborIdx.push_back(indexStruct(i + 1, j, k + 1));
+                    {
+                        neighbor = jello->p[i][j + 1][k + 1];
+                        neighborVelocity = jello->v[i][j + 1][k + 1];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                }
+                if (j > minIdx) {
+                    if (k > minIdx) // neighborIdx.push_back(indexStruct(i + 1, j, k - 1));
+                    {
+                        neighbor = jello->p[i][j - 1][k - 1];
+                        neighborVelocity = jello->v[i][j - 1][k - 1];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                    if (k < maxIdx) // neighborIdx.push_back(indexStruct(i + 1, j, k + 1));
+                    {
+                        neighbor = jello->p[i][j - 1][k + 1];
+                        neighborVelocity = jello->v[i][j - 1][k + 1];
+
+                        // calculate hook force
+                        pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShear, currentPoint, neighbor), fTotal);
+                        // calculate damp force
+                        pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                    }
+                }
 
                 // shear diagonal
                 if (i + 1 <= maxIdx) {
                     if (j + 1 <= maxIdx) {
-                        if (k + 1 <= maxIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k + 1));
-                        if (k - 1 >= minIdx) neighborIdx.push_back(indexStruct(i + 1, j + 1, k - 1));
+                        if (k + 1 <= maxIdx) // neighborIdx.push_back(indexStruct(i + 1, j + 1, k + 1));
+                        {
+                            neighbor = jello->p[i + 1][j + 1][k + 1];
+                            neighborVelocity = jello->v[i + 1][j + 1][k + 1];
+
+                            // calculate hook force
+                            pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
+                            // calculate damp force
+                            pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                        }
+                        if (k - 1 >= minIdx) // neighborIdx.push_back(indexStruct(i + 1, j + 1, k - 1));
+                        {
+                            neighbor = jello->p[i + 1][j + 1][k - 1];
+                            neighborVelocity = jello->v[i + 1][j + 1][k - 1];
+
+                            // calculate hook force
+                            pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
+                            // calculate damp force
+                            pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                        }
                     }
 
                     if (j - 1 >= minIdx) {
-                        if (k + 1 <= maxIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k + 1));
-                        if (k - 1 >= minIdx) neighborIdx.push_back(indexStruct(i + 1, j - 1, k - 1));
+                        if (k + 1 <= maxIdx) // neighborIdx.push_back(indexStruct(i + 1, j - 1, k + 1));
+                        {
+                            neighbor = jello->p[i + 1][j - 1][k + 1];
+                            neighborVelocity = jello->v[i + 1][j - 1][k + 1];
+
+                            // calculate hook force
+                            pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
+                            // calculate damp force
+                            pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                        }
+                        if (k - 1 >= minIdx) // neighborIdx.push_back(indexStruct(i + 1, j - 1, k - 1));
+                        {
+                            neighbor = jello->p[i + 1][j - 1][k - 1];
+                            neighborVelocity = jello->v[i + 1][j - 1][k - 1];
+
+                            // calculate hook force
+                            pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
+                            // calculate damp force
+                            pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                        }
                     }
                 }
                 if (i - 1 >= minIdx) {
                     if (j + 1 <= maxIdx) {
-                        if (k + 1 <= maxIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k + 1));
-                        if (k - 1 >= minIdx) neighborIdx.push_back(indexStruct(i - 1, j + 1, k - 1));
+                        if (k + 1 <= maxIdx) // neighborIdx.push_back(indexStruct(i - 1, j + 1, k + 1));
+                        {
+                            neighbor = jello->p[i - 1][j + 1][k + 1];
+                            neighborVelocity = jello->v[i - 1][j + 1][k + 1];
+
+                            // calculate hook force
+                            pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
+                            // calculate damp force
+                            pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                        }
+                        if (k - 1 >= minIdx) // neighborIdx.push_back(indexStruct(i - 1, j + 1, k - 1));
+                        {
+                            neighbor = jello->p[i - 1][j + 1][k - 1];
+                            neighborVelocity = jello->v[i - 1][j + 1][k - 1];
+
+                            // calculate hook force
+                            pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
+                            // calculate damp force
+                            pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                        }
                     }
 
                     if (j - 1 >= minIdx) {
-                        if (k + 1 <= maxIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k + 1));
-                        if (k - 1 >= minIdx) neighborIdx.push_back(indexStruct(i - 1, j - 1, k - 1));
+                        if (k + 1 <= maxIdx) // neighborIdx.push_back(indexStruct(i - 1, j - 1, k + 1));
+                        {
+                            neighbor = jello->p[i - 1][j - 1][k + 1];
+                            neighborVelocity = jello->v[i - 1][j - 1][k + 1];
+
+                            // calculate hook force
+                            pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
+                            // calculate damp force
+                            pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                        }
+                        if (k - 1 >= minIdx) // neighborIdx.push_back(indexStruct(i - 1, j - 1, k - 1));
+                        {
+                            neighbor = jello->p[i - 1][j - 1][k - 1];
+                            neighborVelocity = jello->v[i - 1][j - 1][k - 1];
+
+                            // calculate hook force
+                            pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
+                            // calculate damp force
+                            pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                        }
                     }
                 }
 
-                for (indexStruct idx : neighborIdx) {
-                    point neighbor = jello->p[idx.x][idx.y][idx.z];
-                    point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
+                // find bending neighbors
+                if (i > minIdx + 1) // neighborIdx.push_back(indexStruct(i - 2, j, k));
+                {                    
+                    neighbor = jello->p[i - 2][j][k];
+                    neighborVelocity = jello->v[i - 2][j][k];
 
                     // calculate hook force
-                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthShearDiag, currentPoint, neighbor), fTotal);
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthBend, currentPoint, neighbor), fTotal);
                     // calculate damp force
                     pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
-                }
-                neighborIdx.clear();
+                }                    
+                if (i < maxIdx - 1) // neighborIdx.push_back(indexStruct(i + 2, j, k));
+                {                    
+                    neighbor = jello->p[i + 2][j][k];
+                    neighborVelocity = jello->v[i + 2][j][k];
 
-                // find bending neighbors
-                if (i > minIdx + 1) neighborIdx.push_back(indexStruct(i - 2, j, k));
-                if (i < maxIdx - 1) neighborIdx.push_back(indexStruct(i + 2, j, k));
-                if (j > minIdx + 1) neighborIdx.push_back(indexStruct(i, j - 2, k));
-                if (j < maxIdx - 1) neighborIdx.push_back(indexStruct(i, j + 2, k));
-                if (k > minIdx + 1) neighborIdx.push_back(indexStruct(i, j, k - 2));
-                if (k < maxIdx - 1) neighborIdx.push_back(indexStruct(i, j, k + 2));
-                for (indexStruct idx : neighborIdx) {
-                    point neighbor = jello->p[idx.x][idx.y][idx.z];
-                    point neighborVelocity = jello->v[idx.x][idx.y][idx.z];
+                    // calculate hook force
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthBend, currentPoint, neighbor), fTotal);
+                    // calculate damp force
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                }                    
+                if (j > minIdx + 1) // neighborIdx.push_back(indexStruct(i, j - 2, k));
+                {                    
+                    neighbor = jello->p[i][j - 2][k];
+                    neighborVelocity = jello->v[i][j - 2][k];
+
+                    // calculate hook force
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthBend, currentPoint, neighbor), fTotal);
+                    // calculate damp force
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                }                    
+                if (j < maxIdx - 1) // neighborIdx.push_back(indexStruct(i, j + 2, k));
+                {                    
+                    neighbor = jello->p[i][j + 2][k];
+                    neighborVelocity = jello->v[i][j + 2][k];
+
+                    // calculate hook force
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthBend, currentPoint, neighbor), fTotal);
+                    // calculate damp force
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                }                    
+                if (k > minIdx + 1) // neighborIdx.push_back(indexStruct(i, j, k - 2));
+                {                    
+                    neighbor = jello->p[i][j][k - 2];
+                    neighborVelocity = jello->v[i][j][k - 2];
+
+                    // calculate hook force
+                    pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthBend, currentPoint, neighbor), fTotal);
+                    // calculate damp force
+                    pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
+                }                    
+                if (k < maxIdx - 1) // neighborIdx.push_back(indexStruct(i, j, k + 2));
+                {
+                    neighbor = jello->p[i][j][k + 2];
+                    neighborVelocity = jello->v[i][j][k + 2];
 
                     // calculate hook force
                     pSUM(fTotal, calculateHookLaw(jello->kElastic, jello->unrestLengthBend, currentPoint, neighbor), fTotal);
                     // calculate damp force
                     pSUM(fTotal, calculateDamping(jello->dElastic, currentPoint, neighbor, currentPointVelocity, neighborVelocity), fTotal);
                 }
-                neighborIdx.clear();
 
                 //calculate collision springs forces
                 for (int f = 0; f < jello->box.size(); f++) {
