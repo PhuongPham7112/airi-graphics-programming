@@ -130,6 +130,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="imageloader.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="jello.h" />
     <ClInclude Include="openGL-headers.h" />
@@ -138,6 +139,7 @@
     <ClInclude Include="showCube.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="imageloader.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="jello.cpp" />
     <ClCompile Include="physics.cpp" />

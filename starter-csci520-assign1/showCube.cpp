@@ -8,9 +8,7 @@
 #include "jello.h"
 #include "showCube.h"
 #include "pic.h"
-
-// texturing
-GLuint textureID;
+#include "imageloader.h"
 
 int pointMap(int side, int i, int j)
 {
@@ -41,26 +39,7 @@ int pointMap(int side, int i, int j)
   return r;
 }
 
-// To load pic for texturing
-void loadTexture(char* texFile)
-{
-    int nx, ny;
-    if (ppm_get_size(texFile, &nx, &ny))
-    {
-        Pic* image = ppm_read(texFile, pic_alloc(nx, ny, 3, NULL));
-        glGenTextures(1, &textureID); // allocate a texture name
-        glBindTexture(GL_TEXTURE_2D, textureID);  // select our current texture
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST); // for small texture are, bilinear filtering and finding the closest mipmap
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // for large texture area, bilinear filtering the original image
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // wraping texture over the edges - repeat
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        // We only have RGB data in our array. It would be better to have an extra component, but this will do.
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, image->nx, image->ny, 0, GL_RGB, GL_UNSIGNED_BYTE, image->pix);
-        // Before we draw something we call
-        glBindTexture(GL_TEXTURE_2D, textureID);
-    }
-    return;
-}
+
 
 void showCube(struct world * jello)
 {
@@ -235,21 +214,39 @@ void showCube(struct world * jello)
               else
                   glFrontFace(GL_CW); // flip definition of orientation
 
+              // Before we draw something we call
+              glEnable(GL_TEXTURE_2D);
+              glBindTexture(GL_TEXTURE_2D, texHandle);
               glBegin(GL_TRIANGLE_STRIP);
+
+              int texCounter = 0;
               for (i = 0; i <= 7; i++)
               {
-
+                  // Assign texel
+                  if (texCounter % 4 == 0) glTexCoord2f(0, 1);
+                  else if (texCounter % 4 == 1) glTexCoord2f(0, 0);
+                  else if (texCounter % 4 == 2) glTexCoord2f(1, 1);
+                  else if (texCounter % 4 == 3) glTexCoord2f(1, 0);
                   glNormal3f(normal[i][j].x / counter[i][j], normal[i][j].y / counter[i][j],
                       normal[i][j].z / counter[i][j]);
                   glVertex3f(NODE(face, i, j).x, NODE(face, i, j).y, NODE(face, i, j).z);
+                  texCounter++;
 
+                  // Assign texel
+                  if (texCounter % 4 == 0) glTexCoord2f(0, 1);
+                  else if (texCounter % 4 == 1) glTexCoord2f(0, 0);
+                  else if (texCounter % 4 == 2) glTexCoord2f(1, 1);
+                  else if (texCounter % 4 == 3) glTexCoord2f(1, 0);
                   glNormal3f(normal[i][j - 1].x / counter[i][j - 1], normal[i][j - 1].y / counter[i][j - 1],
                       normal[i][j - 1].z / counter[i][j - 1]);
                   glVertex3f(NODE(face, i, j - 1).x, NODE(face, i, j - 1).y, NODE(face, i, j - 1).z);
+                  texCounter++;
               }
               glEnd();
+              glDisable(GL_TEXTURE_2D);
           }
       }
+      Theta *= 1.0;
   }
   glFrontFace(GL_CCW);
 }
@@ -258,15 +255,7 @@ void showIncPlane(struct world* jello)
 {
     if (jello->incPlanePresent)
     {
-        // setting up texturing
-        if (jello->cubeTexture != NULL)
-        {
-            loadTexture(jello->cubeTexture);
-           
-        }
-
         // render a 4x4 plane
-        glEnable(GL_TEXTURE_2D);
         glBegin(GL_TRIANGLE_STRIP);
 
         plane incPlane = jello->box.back();
@@ -304,29 +293,22 @@ void showIncPlane(struct world* jello)
         pSUM(v4, b, v4);
 
         // triangle 1
-        //glColor4f(1, 0, 0, 1);
-        glTexCoord2f(0.0, 0.0);
+        glColor4f(1, 0, 0, 1);
         glVertex3f(v2.x, v2.y, v2.z);
-        //glColor4f(1, 0, 0, 1);
-        glTexCoord2f(1.0, 0.0);
+        glColor4f(1, 0, 0, 1);
         glVertex3f(v1.x, v1.y, v1.z);
-        //glColor4f(1, 0, 0, 1);
-        glTexCoord2f(0.0, 0.0);
+        glColor4f(1, 0, 0, 1);
         glVertex3f(v4.x, v4.y, v4.z);
 
         // triangle 2
-        //glColor4f(1, 0, 0, 1);
-        glTexCoord2f(0.0, 0.0);
+        glColor4f(1, 0, 0, 1);
         glVertex3f(v2.x, v2.y, v2.z);
-        //glColor4f(1, 0, 0, 1);
-        glTexCoord2f(1.0, 0.0);
+        glColor4f(1, 0, 0, 1);
         glVertex3f(v3.x, v3.y, v3.z);
-        //glColor4f(1, 0, 0, 1);
-        glTexCoord2f(0.0, 0.0);
+        glColor4f(1, 0, 0, 1);
         glVertex3f(v4.x, v4.y, v4.z);
 
         glEnd();
-        glDisable(GL_TEXTURE_2D);
     }
 }
 

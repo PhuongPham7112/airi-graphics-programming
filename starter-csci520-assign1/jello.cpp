@@ -12,6 +12,7 @@
 #include "showCube.h"
 #include "input.h"
 #include "physics.h"
+#include "imageloader.h"
 
 // camera parameters
 double Theta = pi / 6;
@@ -27,7 +28,7 @@ int g_iLeftMouseButton,g_iMiddleMouseButton,g_iRightMouseButton;
 int sprite=0;
 
 // these variables control what is displayed on screen
-int shear=0, bend=0, structural=1, pause=0, viewingMode=1, saveScreenToFile=0;
+int shear=1, bend=1, structural=1, pause=0, viewingMode=1, saveScreenToFile=0;
 
 struct world jello;
 
@@ -48,7 +49,14 @@ void myinit()
   glShadeModel(GL_SMOOTH);
   glEnable(GL_POLYGON_SMOOTH);
   glEnable(GL_LINE_SMOOTH);
-  // init bounding box planes
+
+  // setting up texturing
+  glGenTextures(1, &texHandle); // allocate a texture name
+  if (jello.cubeTexture != NULL)
+  {
+      loadTextures("textures/Gojo.bmp");
+  }
+
 // plane struct: a, b, c, d, point on plane
   for (int face = 0; face < 6; face++) {
       plane side;
