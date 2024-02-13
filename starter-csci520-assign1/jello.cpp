@@ -52,10 +52,7 @@ void myinit()
 
   // setting up texturing
   glGenTextures(1, &texHandle); // allocate a texture name
-  if (jello.cubeTexture != NULL)
-  {
-      loadTextures("textures/Gojo.bmp");
-  }
+  loadTextures("textures/Gojo.bmp");
 
 // plane struct: a, b, c, d, point on plane
   for (int face = 0; face < 6; face++) {
@@ -162,15 +159,15 @@ void display()
   
   // light 's ambient, diffuse, specular
   GLfloat lKa0[] = { 0.0, 0.0, 0.0, 1.0 };
-  GLfloat lKd0[] = { 1.0, 1.0, 1.0, 1.0 };
+  GLfloat lKd0[] = { 0.0, 1.0, 1.0, 1.0 };
   GLfloat lKs0[] = { 1.0, 1.0, 1.0, 1.0 };
 
   GLfloat lKa1[] = { 0.0, 0.0, 0.0, 1.0 };
-  GLfloat lKd1[] = { 1.0, 0.0, 0.0, 1.0 };
+  GLfloat lKd1[] = { 0.0, 1.0, 1.0, 1.0 };
   GLfloat lKs1[] = { 1.0, 0.0, 0.0, 1.0 };
 
   GLfloat lKa2[] = { 0.0, 0.0, 0.0, 1.0 };
-  GLfloat lKd2[] = { 1.0, 1.0, 0.0, 1.0 };
+  GLfloat lKd2[] = { 0.0, 1.0, 1.0, 1.0 };
   GLfloat lKs2[] = { 1.0, 1.0, 0.0, 1.0 };
 
   GLfloat lKa3[] = { 0.0, 0.0, 0.0, 1.0 };
@@ -178,7 +175,7 @@ void display()
   GLfloat lKs3[] = { 0.0, 1.0, 1.0, 1.0 };
 
   GLfloat lKa4[] = { 0.0, 0.0, 0.0, 1.0 };
-  GLfloat lKd4[] = { 0.0, 0.0, 1.0, 1.0 };
+  GLfloat lKd4[] = { 0.0, 1.0, 1.0, 1.0 };
   GLfloat lKs4[] = { 0.0, 0.0, 1.0, 1.0 };
 
   GLfloat lKa5[] = { 0.0, 0.0, 0.0, 1.0 };
@@ -186,11 +183,11 @@ void display()
   GLfloat lKs5[] = { 1.0, 0.0, 1.0, 1.0 };
 
   GLfloat lKa6[] = { 0.0, 0.0, 0.0, 1.0 };
-  GLfloat lKd6[] = { 1.0, 1.0, 1.0, 1.0 };
+  GLfloat lKd6[] = { 1.0, 0.0, 1.0, 1.0 };
   GLfloat lKs6[] = { 1.0, 1.0, 1.0, 1.0 };
 
   GLfloat lKa7[] = { 0.0, 0.0, 0.0, 1.0 };
-  GLfloat lKd7[] = { 0.0, 1.0, 1.0, 1.0 };
+  GLfloat lKd7[] = { 1.0, 0.0, 1.0, 1.0 };
   GLfloat lKs7[] = { 0.0, 1.0, 1.0, 1.0 };
 
   // light positions and directions
@@ -206,8 +203,8 @@ void display()
   // jelly material color
 
   GLfloat mKa[] = { 0.0, 0.0, 0.0, 1.0 };
-  GLfloat mKd[] = { 0.3, 0.3, 0.3, 1.0 };
-  GLfloat mKs[] = { 1.0, 1.0, 1.0, 1.0 };
+  GLfloat mKd[] = { 0.5, 0.5, 0.5, 1.0 };
+  GLfloat mKs[] = { 0.5, 0.5, 0.5, 1.0 };
   GLfloat mKe[] = { 0.0, 0.0, 0.0, 1.0 };
 
   /* set up lighting */
@@ -300,13 +297,8 @@ int main (int argc, char ** argv)
   if (argc<2)
   {  
     printf ("Oops! You didn't say the jello world file!\n");
-    printf ("Usage: %s [worldfile] [optional texture file]\n", argv[0]);
+    printf ("Usage: %s [worldfile]\n", argv[0]);
     exit(0);
-  }
-
-  if (argc == 3)
-  {
-      jello.cubeTexture = argv[2];
   }
 
   readWorld(argv[1],&jello);

@@ -79,7 +79,6 @@ struct world
     double unrestLengthShear = sqrt(2.0) * unrestLength;
     double unrestLengthShearDiag = sqrt(3.0) * unrestLength;
     double unrestLengthBend = 2.0 * unrestLength;
-    char* cubeTexture;
 };
 
 extern struct world jello;
