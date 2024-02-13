@@ -521,22 +521,18 @@ void computeAcceleration(struct world* jello, struct point a[8][8][8])
                         double penetration;
                         point penetrationForce;
                         point invNormal = point(-face.normal.x, -face.normal.y, -face.normal.z);
-                        penetration = DOTPRODUCTp(invNormal, diff, penetration);
+                        DOTPRODUCTp(invNormal, diff, penetration);
                         pMULTIPLY(face.normal, penetration, penetrationForce);
                         pDIFFERENCE(currentPoint, penetrationForce, collisionContact);
 
-                        point fCollisionHook = calculateHookLaw(jello->kCollision, 0.0, collisionContact, currentPoint);
-                        point fCollisionDamp = calculateDamping(jello->dCollision, collisionContact, currentPoint, penetrationForce, currentPointVelocity);
-
-                        pSUM(fCollisionHook, fCollision, fCollision);
-                        pSUM(fCollisionDamp, fCollision, fCollision);
+                        pSUM(calculateHookLaw(jello->kCollision, 0.0, collisionContact, currentPoint), fCollision, fCollision);
+                        pSUM(calculateDamping(jello->dCollision, collisionContact, currentPoint, penetrationForce, currentPointVelocity), fCollision, fCollision);
                     }
                     pSUM(fCollision, fTotal, fTotal);
                 }
 
                 // calculate external force field
-                point fExternal = calculateExternalForce(jello, i, j, k);
-                pSUM(fExternal, fTotal, fTotal);
+                pSUM(calculateExternalForce(jello, i, j, k), fTotal, fTotal);
 
                 // a = F / m
                 pMULTIPLY(fTotal, (1.0 / jello->mass), a[i][j][k]);
