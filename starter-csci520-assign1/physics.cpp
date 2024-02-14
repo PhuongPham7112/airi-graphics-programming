@@ -534,11 +534,16 @@ void computeAcceleration(struct world* jello, struct point a[8][8][8])
                 // calculate external force field
                 pSUM(calculateExternalForce(jello, i, j, k), fTotal, fTotal);
 
+                // mouse drag
+                
+                pSUM(jello->mouseForce, fTotal, fTotal);
+
                 // a = F / m
                 pMULTIPLY(fTotal, (1.0 / jello->mass), a[i][j][k]);
             }
         }
     }
+    //jello->mouseForce = point(0, 0, 0);
 }
 
 /* performs one step of Euler Integration */

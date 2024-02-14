@@ -7,6 +7,7 @@
 
 #include "jello.h"
 #include "input.h"
+#include <iostream>
 
 /* Write a screenshot, in the PPM format, to the specified filename, in PPM format */
 void saveScreenshot(int windowWidth, int windowHeight, char *filename)
@@ -58,11 +59,35 @@ void mouseMotionDrag(int x, int y)
     g_vMousePos[0] = x;
     g_vMousePos[1] = y;
   }
-
-  if (g_iRightMouseButton)
+  else if (g_iLeftMouseButton)
   {
       // convert mouse delta to force on every point
-      
+      int windowWidth = glutGet(GLUT_WINDOW_WIDTH);
+      int windowHeight = glutGet(GLUT_WINDOW_HEIGHT);
+      GLfloat model[16];
+      GLfloat proj[16];
+      glGetFloatv(GL_MODELVIEW_MATRIX, model);
+      glGetFloatv(GL_PROJECTION_MATRIX, proj);
+      glm::vec4 viewport = glm::vec4(0.0f, 0.0f, windowWidth, windowHeight);
+      glm::mat4 viewMatrix = glm::make_mat4(model);
+      glm::mat4 projMatrix = glm::make_mat4(proj);
+      glm::vec3 extractedCameraPos = glm::inverse(viewMatrix)[3];
+      glm::vec3 mouseDragStart = glm::vec3(g_vMousePos[0], g_vMousePos[1], 0.0); // Replace this with your actual mouse drag vector
+      glm::vec3 mouseDragEnd = glm::vec3(x, y, 0.0); // Replace this with your actual mouse drag vector
+      glm::vec3 worldMouseDragStart = extractedCameraPos - glm::unProject(mouseDragStart, viewMatrix, projMatrix, viewport);
+      glm::vec3 worldMouseDragEnd = extractedCameraPos - glm::unProject(mouseDragEnd, viewMatrix, projMatrix, viewport);
+      glm::vec3 worldSpaceDirection = glm::normalize(mouseDragEnd - mouseDragStart) * 5.0f;
+      std::cout << worldSpaceDirection.x << " " << worldSpaceDirection.y << " " << worldSpaceDirection.z << std::endl;
+      jello.mouseForce.x = worldSpaceDirection.x;
+      jello.mouseForce.y = worldSpaceDirection.y;
+
+      g_vMousePos[0] = x;
+      g_vMousePos[1] = y;
+  }
+  else if (jello.mouseForce.x != 0.0 && jello.mouseForce.y != 0.0)
+  {
+      jello.mouseForce.x = 0.0;
+      jello.mouseForce.y = 0.0;
   }
 }
 
