@@ -8,6 +8,7 @@
 #include "jello.h"
 #include "input.h"
 #include <iostream>
+#include <cmath>
 
 /* Write a screenshot, in the PPM format, to the specified filename, in PPM format */
 void saveScreenshot(int windowWidth, int windowHeight, char *filename)
@@ -74,15 +75,19 @@ void mouseMotionDrag(int x, int y)
       glm::mat4 projMatrix = glm::make_mat4(proj);
       glm::vec3 cameraPos = glm::inverse(viewMatrix)[3];
 
-      glm::vec3 mouseDragStart = glm::vec3(g_vMousePos[0], g_vMousePos[1], 0.0); // Replace this with your actual mouse drag vector
-      glm::vec3 mouseDragEnd = glm::vec3(x, y, 0.0); // Replace this with your actual mouse drag vector
+      glm::vec3 mouseDragStart = glm::vec3(g_vMousePos[0], g_vMousePos[1], 0.0);
+      glm::vec3 mouseDragEnd = glm::vec3(x, y, 0.0);
 
       glm::vec3 worldMouseDragStart = glm::unProject(mouseDragStart, viewMatrix, projMatrix, viewport);
       glm::vec3 worldMouseDragEnd = glm::unProject(mouseDragEnd, viewMatrix, projMatrix, viewport);
       glm::vec3 worldSpaceDirection = -glm::normalize(worldMouseDragEnd - worldMouseDragStart);
-      jello.mouseForce.x = worldSpaceDirection.x;
-      jello.mouseForce.y = worldSpaceDirection.y;
-      jello.mouseForce.z = worldSpaceDirection.z;
+
+      if (!std::isnan(worldSpaceDirection.x) && !std::isnan(worldSpaceDirection.y) && !std::isnan(worldSpaceDirection.z))
+      {
+          jello.mouseForce.x = worldSpaceDirection.x;
+          jello.mouseForce.y = worldSpaceDirection.y;
+          jello.mouseForce.z = worldSpaceDirection.z;
+      }
 
       g_vMousePos[0] = x;
       g_vMousePos[1] = y;
