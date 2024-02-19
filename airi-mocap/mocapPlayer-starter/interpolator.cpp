@@ -26,7 +26,8 @@ void Interpolator::Interpolate(Motion * pInputMotion, Motion ** pOutputMotion, i
 {
   //Allocate new motion
   *pOutputMotion = new Motion(pInputMotion->GetNumFrames(), pInputMotion->GetSkeleton()); 
-
+  
+  // N: number of skipped frames
   //Perform the interpolation
   if ((m_InterpolationType == LINEAR) && (m_AngleRepresentation == EULER))
     LinearInterpolationEuler(pInputMotion, *pOutputMotion, N);
@@ -122,9 +123,35 @@ void Interpolator::Euler2Rotation(double angles[3], double R[9])
     std::memcpy(R, &rot, sizeof(rot));
 }
 
+void Interpolator::Euler2Quaternion(double angles[3], Quaternion<double>& q)
+{
+    // students should implement this
+    double R[9];
+    Euler2Rotation(angles, R); // angles -> rotation matrix
+    q = Quaternion<double>::Matrix2Quaternion(R); // rotation matrix -> quaternion
+}
+
+void Interpolator::Quaternion2Euler(Quaternion<double>& q, double angles[3])
+{
+    // students should implement this
+    double R[9];
+    q.Quaternion2Matrix(R); // quaternion -> rotation matrix
+    Rotation2Euler(R, angles); // rotation matrix -> euler angles
+}
+
 void Interpolator::BezierInterpolationEuler(Motion * pInputMotion, Motion * pOutputMotion, int N)
 {
   // students should implement this
+    int inputLength = pInputMotion->GetNumFrames(); // frames are indexed 0, ..., inputLength-1
+
+    int startKeyframe = 0;
+
+    while (startKeyframe + N + 1 < inputLength)
+    {
+        int endKeyframe = startKeyframe + N + 1;
+
+        startKeyframe = endKeyframe;
+    }
 }
 
 void Interpolator::LinearInterpolationQuaternion(Motion * pInputMotion, Motion * pOutputMotion, int N)
@@ -133,16 +160,6 @@ void Interpolator::LinearInterpolationQuaternion(Motion * pInputMotion, Motion *
 }
 
 void Interpolator::BezierInterpolationQuaternion(Motion * pInputMotion, Motion * pOutputMotion, int N)
-{
-  // students should implement this
-}
-
-void Interpolator::Euler2Quaternion(double angles[3], Quaternion<double> & q) 
-{
-  // students should implement this
-}
-
-void Interpolator::Quaternion2Euler(Quaternion<double> & q, double angles[3]) 
 {
   // students should implement this
 }
