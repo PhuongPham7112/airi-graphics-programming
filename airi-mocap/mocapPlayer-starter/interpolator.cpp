@@ -147,32 +147,6 @@ void Interpolator::Quaternion2Euler(Quaternion<double>& q, double angles[3])
     Rotation2Euler(R, angles); // rotation matrix -> euler angles
 }
 
-// interpolation routines
-void Interpolator::BezierInterpolationEuler(Motion * pInputMotion, Motion * pOutputMotion, int N)
-{
-  // students should implement this
-    int inputLength = pInputMotion->GetNumFrames(); // frames are indexed 0, ..., inputLength-1
-
-    int startKeyframe = 0;
-
-    while (startKeyframe + N + 1 < inputLength)
-    {
-        int endKeyframe = startKeyframe + N + 1;
-
-        startKeyframe = endKeyframe;
-    }
-}
-
-void Interpolator::LinearInterpolationQuaternion(Motion * pInputMotion, Motion * pOutputMotion, int N)
-{
-  // students should implement this
-}
-
-void Interpolator::BezierInterpolationQuaternion(Motion * pInputMotion, Motion * pOutputMotion, int N)
-{
-  // students should implement this
-}
-
 // quaternion interpolation
 Quaternion<double> Interpolator::Slerp(double t, Quaternion<double> & qStart, Quaternion<double> & qEnd_)
 {
@@ -210,3 +184,63 @@ Quaternion<double> Interpolator::DeCasteljauQuaternion(double t, Quaternion<doub
   return result;
 }
 
+// interpolation routines
+void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutputMotion, int N)
+{
+    // students should implement this
+    int inputLength = pInputMotion->GetNumFrames(); // frames are indexed 0, ..., inputLength-1
+    int startKeyframe = 0;
+
+    while (startKeyframe + N + 1 < inputLength)
+    {
+        int endKeyframe = startKeyframe + N + 1;
+        startKeyframe = endKeyframe;
+
+        Posture* startPosture = pInputMotion->GetPosture(startKeyframe);
+        Posture* endPosture = pInputMotion->GetPosture(endKeyframe);
+
+        // copy start and end keyframe
+        pOutputMotion->SetPosture(startKeyframe, *startPosture);
+        pOutputMotion->SetPosture(endKeyframe, *endPosture);
+    }
+}
+
+void Interpolator::LinearInterpolationQuaternion(Motion* pInputMotion, Motion* pOutputMotion, int N)
+{
+    // students should implement this
+    int inputLength = pInputMotion->GetNumFrames(); // frames are indexed 0, ..., inputLength-1
+    int startKeyframe = 0;
+
+    while (startKeyframe + N + 1 < inputLength)
+    {
+        int endKeyframe = startKeyframe + N + 1;
+        startKeyframe = endKeyframe;
+
+        Posture* startPosture = pInputMotion->GetPosture(startKeyframe);
+        Posture* endPosture = pInputMotion->GetPosture(endKeyframe);
+
+        // copy start and end keyframe
+        pOutputMotion->SetPosture(startKeyframe, *startPosture);
+        pOutputMotion->SetPosture(endKeyframe, *endPosture);
+    }
+}
+
+void Interpolator::BezierInterpolationQuaternion(Motion* pInputMotion, Motion* pOutputMotion, int N)
+{
+    // students should implement this
+    int inputLength = pInputMotion->GetNumFrames(); // frames are indexed 0, ..., inputLength-1
+    int startKeyframe = 0;
+
+    while (startKeyframe + N + 1 < inputLength)
+    {
+        int endKeyframe = startKeyframe + N + 1;
+        startKeyframe = endKeyframe;
+
+        Posture* startPosture = pInputMotion->GetPosture(startKeyframe);
+        Posture* endPosture = pInputMotion->GetPosture(endKeyframe);
+
+        // copy start and end keyframe
+        pOutputMotion->SetPosture(startKeyframe, *startPosture);
+        pOutputMotion->SetPosture(endKeyframe, *endPosture);
+    }
+}
