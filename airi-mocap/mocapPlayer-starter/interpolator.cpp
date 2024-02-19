@@ -7,6 +7,11 @@
 #include "types.h"
 #include <glm/gtc/type_ptr.hpp> // For glm::make_mat4
 #include <glm/glm.hpp>
+#include <cmath>
+
+double degreesToRadians(double degrees) {
+    return degrees * M_PI / 180.0;
+}
 
 Interpolator::Interpolator()
 {
@@ -107,19 +112,22 @@ void Interpolator::Rotation2Euler(double R[9], double angles[3])
 void Interpolator::Euler2Rotation(double angles[3], double R[9])
 {
   // students should implement this
+    double radX = degreesToRadians(angles[0]);
     glm::dmat3 rotX = glm::dmat3(1.0, 0.0, 0.0,
-        0.0, cos(angles[0]), sin(angles[0]),
-        0.0, -sin(angles[0]), cos(angles[0]));
+        0.0, cos(radX), sin(radX),
+        0.0, -sin(radX), cos(radX));
     
-    glm::dmat3 rotY = glm::dmat3(cos(angles[1]), 0.0, -sin(angles[1]),
+    double radY = degreesToRadians(angles[1]);
+    glm::dmat3 rotY = glm::dmat3(cos(radY), 0.0, -sin(radY),
         0.0, 1.0, 0.0,
-        sin(angles[1]), 0.0, cos(angles[1]));
+        sin(radY), 0.0, cos(radY));
     
-    glm::dmat3 rotZ = glm::dmat3(cos(angles[2]), sin(angles[2]), 0.0,
-        -sin(angles[2]), cos(angles[2]), 0.0,
+    double radZ = degreesToRadians(angles[2]);
+    glm::dmat3 rotZ = glm::dmat3(cos(radZ), sin(radZ), 0.0,
+        -sin(radZ), cos(radZ), 0.0,
         0.0, 0.0, 1.0);
 
-    glm::dmat3 rot = glm::inverse(rotZ * rotY * rotX); // col to row major
+    glm::dmat3 rot = (rotZ * rotY * rotX);
     std::memcpy(R, &rot, sizeof(rot));
 }
 
@@ -139,6 +147,7 @@ void Interpolator::Quaternion2Euler(Quaternion<double>& q, double angles[3])
     Rotation2Euler(R, angles); // rotation matrix -> euler angles
 }
 
+// interpolation routines
 void Interpolator::BezierInterpolationEuler(Motion * pInputMotion, Motion * pOutputMotion, int N)
 {
   // students should implement this
@@ -164,20 +173,29 @@ void Interpolator::BezierInterpolationQuaternion(Motion * pInputMotion, Motion *
   // students should implement this
 }
 
+// quaternion interpolation
 Quaternion<double> Interpolator::Slerp(double t, Quaternion<double> & qStart, Quaternion<double> & qEnd_)
 {
   // students should implement this
-  Quaternion<double> result;
+    double theta = acos(qStart.Gets() * qEnd_.Gets() 
+        + qStart.Getx() * qEnd_.Getx()
+        + qStart.Gety() * qEnd_.Gety() 
+        + qStart.Getz() * qEnd_.Getz()); // in radian
+  Quaternion<double> result = qStart * (sin(theta * (1.0 - t)) / sin(theta)) + qEnd_ * (sin(theta * t) / sin(theta));
   return result;
 }
 
 Quaternion<double> Interpolator::Double(Quaternion<double> p, Quaternion<double> q)
 {
   // students should implement this
-  Quaternion<double> result;
+  Quaternion<double> result = 2 * (p.Gets() * q.Gets()
+      + p.Getx() * q.Getx()
+      + p.Gety() * q.Gety()
+      + p.Getz() * q.Getz()) * q - p;
   return result;
 }
 
+// Bezier spline evaluation
 vector Interpolator::DeCasteljauEuler(double t, vector p0, vector p1, vector p2, vector p3)
 {
   // students should implement this
