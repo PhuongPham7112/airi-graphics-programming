@@ -5,6 +5,8 @@
 #include "motion.h"
 #include "interpolator.h"
 #include "types.h"
+#include <glm/gtc/type_ptr.hpp> // For glm::make_mat4
+#include <glm/glm.hpp>
 
 Interpolator::Interpolator()
 {
@@ -104,6 +106,20 @@ void Interpolator::Rotation2Euler(double R[9], double angles[3])
 void Interpolator::Euler2Rotation(double angles[3], double R[9])
 {
   // students should implement this
+    glm::dmat3 rotX = glm::dmat3(1.0, 0.0, 0.0,
+        0.0, cos(angles[0]), sin(angles[0]),
+        0.0, -sin(angles[0]), cos(angles[0]));
+    
+    glm::dmat3 rotY = glm::dmat3(cos(angles[1]), 0.0, -sin(angles[1]),
+        0.0, 1.0, 0.0,
+        sin(angles[1]), 0.0, cos(angles[1]));
+    
+    glm::dmat3 rotZ = glm::dmat3(cos(angles[2]), sin(angles[2]), 0.0,
+        -sin(angles[2]), cos(angles[2]), 0.0,
+        0.0, 0.0, 1.0);
+
+    glm::dmat3 rot = glm::inverse(rotZ * rotY * rotX); // col to row major
+    std::memcpy(R, &rot, sizeof(rot));
 }
 
 void Interpolator::BezierInterpolationEuler(Motion * pInputMotion, Motion * pOutputMotion, int N)
