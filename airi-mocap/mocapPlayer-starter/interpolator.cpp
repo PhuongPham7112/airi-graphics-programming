@@ -188,20 +188,21 @@ Quaternion<double> Interpolator::DeCasteljauQuaternion(double t, Quaternion<doub
 // interpolation routines
 void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutputMotion, int N)
 {
-    glm::dmat4 bezierBasis = glm::dmat4(-1.0, 3.0, -3.0, 1.0,
-        3.0, -6.0, 3.0, 0.0,
-        -3.0, 3.0, 0.0, 0.0, 
-        1.0, 0.0, 0.0, 0.0);
     // students should implement this
     int inputLength = pInputMotion->GetNumFrames(); // frames are indexed 0, ..., inputLength-1
-    int startKeyframe = 0;
+    int startKeyframe = 0, hasPrev = 0, hasNext = 0;
 
     while (startKeyframe + N + 1 < inputLength)
     {
-        int hasPrev = 0;
-        int hasNext = 0;
+        hasPrev = 0;
+        hasNext = 0;
+        int prevKeyframe = startKeyframe - N - 1;
         int endKeyframe = startKeyframe + N + 1;
+        int nextKeyframe = endKeyframe + N + 1;
         startKeyframe = endKeyframe;
+
+        vector p0, p1, p2, p3; // points
+        vector a1, b2; // control points
 
         Posture* startPosture = pInputMotion->GetPosture(startKeyframe);
         Posture* endPosture = pInputMotion->GetPosture(endKeyframe);
@@ -212,41 +213,55 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
 
         // if there's a prev frame
         Posture* prevPosture;
-        if (startKeyframe > 0)
+        if (prevKeyframe > 0)
         {
-            prevPosture = pInputMotion->GetPosture(startKeyframe - 1);
+            prevPosture = pInputMotion->GetPosture(prevKeyframe);
             hasPrev = 1;
         }
 
         // if there's a next frame
         Posture* nextPosture;
-        if (endKeyframe + 1 < inputLength)
+        if (nextKeyframe < inputLength)
         {
-            nextPosture = pInputMotion->GetPosture(endKeyframe + 1);
+            nextPosture = pInputMotion->GetPosture(nextKeyframe);
             hasNext = 1;
         }
 
         // find control points
-        if (!hasPrev)
+        if (!hasPrev && hasNext)
         {
-            // if there's no prev frame
+            p0 = startPosture->root_pos;
+            p1 = endPosture->root_pos;
+            p2 = nextPosture->root_pos;
+            // control points for q0 and q1
+            a1 = p0 * (2.0 / 3.0) + (p1 * 2.0 - p2) * (1.0 / 3.0);
         }
-        else if (!hasNext)
+        else if (!hasNext && hasPrev)
         {
-            // if there's no next frame
+            p0 = prevPosture->root_pos;
+            p1 = startPosture->root_pos;
+            p2 = endPosture->root_pos;
+            b2 = p2 * (2.0 / 3.0) + (p1 * 2.0 - p0) * (1.0 / 3.0);
         }
-        else
+        else if (hasNext && hasPrev)
         {
-            // every in-between
-            vector an_ = (startPosture->root_pos * 2.0 - prevPosture->root_pos + nextPosture->root_pos) * 0.5;
-            vector an = startPosture->root_pos * (2.0/3.0) + an_ * (1.0/3.0);
-            vector bn = startPosture->root_pos * (4.0/3.0) + an_ * (-1.0/3.0);
+            p0 = prevPosture->root_pos;
+            p1 = startPosture->root_pos;
+            p2 = endPosture->root_pos;
+            p3 = nextPosture->root_pos;
+            vector a1_ = (p1 * 2.0 - p0 + p2) * 0.5;
+            a1 = p1 * (2.0 / 3.0) + a1_ * (1.0 / 3.0);
+            vector b1 = p1 * (4.0 / 3.0) + a1_ * (-1.0 / 3.0);
+            vector a2_;
         }
 
         // interpolate in between
         for (int frame = 1; frame <= N; frame++)
         {
             double t = 1.0 * frame / (N + 1.0); // [0, 1]
+
+            
+
             // interpolate root position (Bezier)
             Posture interpolatedPosture;
             pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
