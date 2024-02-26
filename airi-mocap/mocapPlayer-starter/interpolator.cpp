@@ -5,6 +5,7 @@
 #include "motion.h"
 #include "interpolator.h"
 #include "types.h"
+#include "vector.h"
 #include <glm/gtc/type_ptr.hpp> // For glm::make_mat4
 #include <glm/glm.hpp>
 #include <cmath>
@@ -187,12 +188,18 @@ Quaternion<double> Interpolator::DeCasteljauQuaternion(double t, Quaternion<doub
 // interpolation routines
 void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutputMotion, int N)
 {
+    glm::dmat4 bezierBasis = glm::dmat4(-1.0, 3.0, -3.0, 1.0,
+        3.0, -6.0, 3.0, 0.0,
+        -3.0, 3.0, 0.0, 0.0, 
+        1.0, 0.0, 0.0, 0.0);
     // students should implement this
     int inputLength = pInputMotion->GetNumFrames(); // frames are indexed 0, ..., inputLength-1
     int startKeyframe = 0;
 
     while (startKeyframe + N + 1 < inputLength)
     {
+        int hasPrev = 0;
+        int hasNext = 0;
         int endKeyframe = startKeyframe + N + 1;
         startKeyframe = endKeyframe;
 
@@ -202,7 +209,54 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
         // copy start and end keyframe
         pOutputMotion->SetPosture(startKeyframe, *startPosture);
         pOutputMotion->SetPosture(endKeyframe, *endPosture);
+
+        // if there's a prev frame
+        Posture* prevPosture;
+        if (startKeyframe > 0)
+        {
+            prevPosture = pInputMotion->GetPosture(startKeyframe - 1);
+            hasPrev = 1;
+        }
+
+        // if there's a next frame
+        Posture* nextPosture;
+        if (endKeyframe + 1 < inputLength)
+        {
+            nextPosture = pInputMotion->GetPosture(endKeyframe + 1);
+            hasNext = 1;
+        }
+
+        // find control points
+        if (!hasPrev)
+        {
+            // if there's no prev frame
+        }
+        else if (!hasNext)
+        {
+            // if there's no next frame
+        }
+        else
+        {
+            // every in-between
+            vector an_ = (startPosture->root_pos * 2.0 - prevPosture->root_pos + nextPosture->root_pos) * 0.5;
+            vector an = startPosture->root_pos * (2.0/3.0) + an_ * (1.0/3.0);
+            vector bn = startPosture->root_pos * (4.0/3.0) + an_ * (-1.0/3.0);
+        }
+
+        // interpolate in between
+        for (int frame = 1; frame <= N; frame++)
+        {
+            double t = 1.0 * frame / (N + 1.0); // [0, 1]
+            // interpolate root position (Bezier)
+            Posture interpolatedPosture;
+            pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
+            startKeyframe += frame;
+        }
+        startKeyframe = endKeyframe;
     }
+
+    for (int frame = startKeyframe + 1; frame < inputLength; frame++)
+        pOutputMotion->SetPosture(frame, *(pInputMotion->GetPosture(frame)));
 }
 
 void Interpolator::LinearInterpolationQuaternion(Motion* pInputMotion, Motion* pOutputMotion, int N)
