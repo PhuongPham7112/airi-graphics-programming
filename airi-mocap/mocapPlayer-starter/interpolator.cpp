@@ -27,6 +27,11 @@ Interpolator::~Interpolator()
 {
 }
 
+vector Interpolator::Lerp(double t, vector& vStart, vector& vEnd)
+{
+    return vStart * (1.0 - t) + vEnd * t;
+}
+
 //Create interpolated motion
 void Interpolator::Interpolate(Motion * pInputMotion, Motion ** pOutputMotion, int N) 
 {
@@ -211,11 +216,15 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
         pOutputMotion->SetPosture(startKeyframe, *startPosture);
         pOutputMotion->SetPosture(endKeyframe, *endPosture);
 
+        p1 = startPosture->root_pos;
+        p2 = endPosture->root_pos;
+
         // if there's a prev frame
         Posture* prevPosture;
         if (prevKeyframe > 0)
         {
             prevPosture = pInputMotion->GetPosture(prevKeyframe);
+            p0 = prevPosture->root_pos;
             hasPrev = 1;
         }
 
@@ -224,35 +233,37 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
         if (nextKeyframe < inputLength)
         {
             nextPosture = pInputMotion->GetPosture(nextKeyframe);
+            p3 = nextPosture->root_pos;
             hasNext = 1;
         }
 
         // find control points
         if (!hasPrev && hasNext)
         {
-            p0 = startPosture->root_pos;
-            p1 = endPosture->root_pos;
-            p2 = nextPosture->root_pos;
-            // control points for q0 and q1
-            a1 = p0 * (2.0 / 3.0) + (p1 * 2.0 - p2) * (1.0 / 3.0);
+            // special case a1
+            a1 = (1.0 / 3.0, p1, Lerp(2.0, p3, p2)); // p1 * (2.0 / 3.0) + (p2 * 2.0 - p3) * (1.0 / 3.0);
+            // find b2
+            vector a2_ = (p2 * 2.0 - p1 + p3) * 0.5;
+            vector a2 = p2 * (2.0 / 3.0) + a2_ * (1.0 / 3.0);
+            b2 = p2 * (4.0 / 3.0) + a2_ * (-1.0 / 3.0);
         }
         else if (!hasNext && hasPrev)
         {
-            p0 = prevPosture->root_pos;
-            p1 = startPosture->root_pos;
-            p2 = endPosture->root_pos;
+            // find a1
+            vector a1_ = (p1 * 2.0 - p0 + p2) * 0.5;
+            a1 = p1 * (2.0 / 3.0) + a1_ * (1.0 / 3.0);
+            // special case b2
             b2 = p2 * (2.0 / 3.0) + (p1 * 2.0 - p0) * (1.0 / 3.0);
         }
         else if (hasNext && hasPrev)
         {
-            p0 = prevPosture->root_pos;
-            p1 = startPosture->root_pos;
-            p2 = endPosture->root_pos;
-            p3 = nextPosture->root_pos;
+            // find a1
             vector a1_ = (p1 * 2.0 - p0 + p2) * 0.5;
             a1 = p1 * (2.0 / 3.0) + a1_ * (1.0 / 3.0);
-            vector b1 = p1 * (4.0 / 3.0) + a1_ * (-1.0 / 3.0);
-            vector a2_;
+            // find b2
+            vector a2_ = (p2 * 2.0 - p1 + p3) * 0.5;
+            vector a2 = p2 * (2.0 / 3.0) + a2_ * (1.0 / 3.0);
+            b2 = p2 * (4.0 / 3.0) + a2_ * (-1.0 / 3.0);
         }
 
         // interpolate in between
@@ -260,12 +271,10 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
         {
             double t = 1.0 * frame / (N + 1.0); // [0, 1]
 
-            
-
             // interpolate root position (Bezier)
             Posture interpolatedPosture;
+            interpolatedPosture.root_pos = DeCasteljauEuler(t, p1, p2, a1, b2);
             pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
-            startKeyframe += frame;
         }
         startKeyframe = endKeyframe;
     }
