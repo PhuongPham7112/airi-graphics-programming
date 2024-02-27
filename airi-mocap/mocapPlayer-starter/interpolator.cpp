@@ -179,8 +179,12 @@ Quaternion<double> Interpolator::Double(Quaternion<double> p, Quaternion<double>
 vector Interpolator::DeCasteljauEuler(double t, vector p0, vector p1, vector p2, vector p3)
 {
   // students should implement this
-  vector result;
-  return result;
+  vector q0 = Lerp(t, p0, p1);
+  vector q1 = Lerp(t, p1, p2);
+  vector q2 = Lerp(t, p2, p3);
+  vector r0 = Lerp(t, q0, q1);
+  vector r1 = Lerp(t, q1, q2);
+  return Lerp(t, r0, r1);
 }
 
 Quaternion<double> Interpolator::DeCasteljauQuaternion(double t, Quaternion<double> p0, Quaternion<double> p1, Quaternion<double> p2, Quaternion<double> p3)
@@ -272,6 +276,14 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
             // interpolate root position (Bezier)
             Posture interpolatedPosture;
             interpolatedPosture.root_pos = DeCasteljauEuler(t, p1, p2, a1, b2);
+
+            // interpolate bone rotations (Bezier)
+            for (int bone = 0; bone < MAX_BONES_IN_ASF_FILE; bone++)
+            {
+
+                interpolatedPosture.bone_rotation[bone] = startPosture->bone_rotation[bone] * (1 - t) + endPosture->bone_rotation[bone] * t;
+            }
+
             pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
         }
         startKeyframe = endKeyframe;
