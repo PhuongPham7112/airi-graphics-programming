@@ -205,10 +205,9 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
     {
         hasPrev = 0;
         hasNext = 0;
-        int prevKeyframe = startKeyframe - N - 1;
+        int prevKeyframe = startKeyframe - (N + 1);
         int endKeyframe = startKeyframe + N + 1;
         int nextKeyframe = endKeyframe + N + 1;
-        startKeyframe = endKeyframe;
 
         vector p0, p1, p2, p3; // root pos
         vector a1, b2; // control points
@@ -256,7 +255,7 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
             vector a1_ = Lerp(0.5, Lerp(2.0, p0, p1), p2);
             a1 = Lerp(1.0 / 3.0, p1, a1_);
             // special case b2
-            b2 = p2 * (2.0 / 3.0) + (p1 * 2.0 - p0) * (1.0 / 3.0);
+            b2 = Lerp(1.0 / 3.0, p2, Lerp(2.0, p0, p1));
         }
         else if (hasNext && hasPrev)
         {
@@ -310,7 +309,7 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
                     vector a1_ = Lerp(0.5, Lerp(2.0, r0, r1), r2);
                     a1 = Lerp(1.0 / 3.0, r1, a1_);
                     // special case b2
-                    b2 = r2 * (2.0 / 3.0) + (r1 * 2.0 - r0) * (1.0 / 3.0);
+                    b2 = Lerp(1.0 / 3.0, r2, Lerp(2.0, r0, r1));
                 }
                 else if (hasNext && hasPrev)
                 {

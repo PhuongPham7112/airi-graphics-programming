@@ -1,0 +1,1 @@
+..\..\..\mocapPlayer-starter\07-walk.asf ..\..\..\mocapPlayer-starter\07_05-walk.amc b e 5 outputMotion1.amc
