@@ -214,63 +214,62 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
 
         Posture* startPosture = pInputMotion->GetPosture(startKeyframe);
         Posture* endPosture = pInputMotion->GetPosture(endKeyframe);
+        p1 = startPosture->root_pos;
+        p2 = endPosture->root_pos;
 
         // copy start and end keyframe
         pOutputMotion->SetPosture(startKeyframe, *startPosture);
         pOutputMotion->SetPosture(endKeyframe, *endPosture);
 
-        p1 = startPosture->root_pos;
-        p2 = endPosture->root_pos;
-
-        // if there's a prev frame
-        Posture* prevPosture;
-        if (prevKeyframe >= 0)
-        {
-            prevPosture = pInputMotion->GetPosture(prevKeyframe);
-            p0 = prevPosture->root_pos;
-            hasPrev = 1;
-        }
-
-        // if there's a next frame
-        Posture* nextPosture;
-        if (nextKeyframe < inputLength)
-        {
-            nextPosture = pInputMotion->GetPosture(nextKeyframe);
-            p3 = nextPosture->root_pos;
-            hasNext = 1;
-        }
-
-        // find control points
-        if (!hasPrev && hasNext)
-        {
-            // special case a1
-            a1 = (1.0 / 3.0, p1, Lerp(2.0, p3, p2)); 
-            // find b2
-            vector a2_ = Lerp(0.5, Lerp(2.0, p1, p2), p3);
-            b2 = Lerp(-1.0 / 3.0, p2, a2_);
-        }
-        else if (!hasNext && hasPrev)
-        {
-            // find a1
-            vector a1_ = Lerp(0.5, Lerp(2.0, p0, p1), p2);
-            a1 = Lerp(1.0 / 3.0, p1, a1_);
-            // special case b2
-            b2 = Lerp(1.0 / 3.0, p2, Lerp(2.0, p0, p1));
-        }
-        else if (hasNext && hasPrev)
-        {
-            // find a1
-            vector a1_ = Lerp(0.5, Lerp(2.0, p0, p1), p2);
-            a1 = Lerp(1.0 / 3.0, p1, a1_);
-            // find b2
-            vector a2_ = Lerp(0.5, Lerp(2.0, p1, p2), p3);
-            b2 = Lerp(-1.0 / 3.0, p2, a2_);
-        }
-
         // interpolate in between
         for (int frame = 1; frame <= N; frame++)
         {
             double t = 1.0 * frame / (N + 1.0); // [0, 1]
+
+             // if there's a prev frame
+            Posture* prevPosture;
+            if (prevKeyframe >= 0)
+            {
+                prevPosture = pInputMotion->GetPosture(prevKeyframe);
+                p0 = prevPosture->root_pos;
+                hasPrev = 1;
+            }
+
+            // if there's a next frame
+            Posture* nextPosture;
+            if (nextKeyframe < inputLength)
+            {
+                nextPosture = pInputMotion->GetPosture(nextKeyframe);
+                p3 = nextPosture->root_pos;
+                hasNext = 1;
+            }
+
+            // find control points
+            if (!hasPrev)
+            {
+                // special case a1
+                a1 = Lerp(1.0 / 3.0, p1, Lerp(2.0, p3, p2));
+                // find b2
+                vector a2_ = Lerp(0.5, Lerp(2.0, p1, p2), p3);
+                b2 = Lerp(-1.0 / 3.0, p2, a2_);
+            }
+            else if (!hasNext)
+            {
+                // find a1
+                vector a1_ = Lerp(0.5, Lerp(2.0, p0, p1), p2);
+                a1 = Lerp(1.0 / 3.0, p1, a1_);
+                // special case b2
+                b2 = Lerp(1.0 / 3.0, p2, Lerp(2.0, p0, p1));
+            }
+            else
+            {
+                // find a1
+                vector a1_ = Lerp(0.5, Lerp(2.0, p0, p1), p2);
+                a1 = Lerp(1.0 / 3.0, p1, a1_);
+                // find b2
+                vector a2_ = Lerp(0.5, Lerp(2.0, p1, p2), p3);
+                b2 = Lerp(-1.0 / 3.0, p2, a2_);
+            }
 
             // interpolate root position (Bezier)
             Posture interpolatedPosture;
@@ -295,15 +294,15 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
                 }
 
                 // find control points
-                if (!hasPrev && hasNext)
+                if (!hasPrev)
                 {
                     // special case a1
-                    a1 = (1.0 / 3.0, r1, Lerp(2.0, r3, r2));
+                    a1 = Lerp(1.0 / 3.0, r1, Lerp(2.0, r3, r2));
                     // find b2
                     vector a2_ = Lerp(0.5, Lerp(2.0, r1, r2), r3);
                     b2 = Lerp(-1.0 / 3.0, r2, a2_);
                 }
-                else if (!hasNext && hasPrev)
+                else if (!hasNext)
                 {
                     // find a1
                     vector a1_ = Lerp(0.5, Lerp(2.0, r0, r1), r2);
@@ -311,7 +310,7 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
                     // special case b2
                     b2 = Lerp(1.0 / 3.0, r2, Lerp(2.0, r0, r1));
                 }
-                else if (hasNext && hasPrev)
+                else
                 {
                     // find a1
                     vector a1_ = Lerp(0.5, Lerp(2.0, r0, r1), r2);
