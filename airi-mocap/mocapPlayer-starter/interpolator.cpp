@@ -210,7 +210,7 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
         int nextKeyframe = endKeyframe + N + 1;
         startKeyframe = endKeyframe;
 
-        vector p0, p1, p2, p3; // points
+        vector p0, p1, p2, p3; // root pos
         vector a1, b2; // control points
 
         Posture* startPosture = pInputMotion->GetPosture(startKeyframe);
@@ -275,13 +275,54 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
 
             // interpolate root position (Bezier)
             Posture interpolatedPosture;
-            interpolatedPosture.root_pos = DeCasteljauEuler(t, p1, p2, a1, b2);
+            interpolatedPosture.root_pos = DeCasteljauEuler(t, p1, a1, b2, p2);
 
             // interpolate bone rotations (Bezier)
             for (int bone = 0; bone < MAX_BONES_IN_ASF_FILE; bone++)
             {
+                vector r0, r1, r2, r3; // bone rotation
 
-                interpolatedPosture.bone_rotation[bone] = startPosture->bone_rotation[bone] * (1 - t) + endPosture->bone_rotation[bone] * t;
+                r1 = startPosture->bone_rotation[bone];
+                r2 = endPosture->bone_rotation[bone];
+
+                if (hasPrev)
+                {
+                    r0 = prevPosture->bone_rotation[bone];
+                }
+
+                if (hasNext)
+                {
+                    r3 = nextPosture->bone_rotation[bone];
+                }
+
+                // find control points
+                if (!hasPrev && hasNext)
+                {
+                    // special case a1
+                    a1 = (1.0 / 3.0, r1, Lerp(2.0, r3, r2));
+                    // find b2
+                    vector a2_ = Lerp(0.5, Lerp(2.0, r1, r2), r3);
+                    b2 = Lerp(-1.0 / 3.0, r2, a2_);
+                }
+                else if (!hasNext && hasPrev)
+                {
+                    // find a1
+                    vector a1_ = Lerp(0.5, Lerp(2.0, r0, r1), r2);
+                    a1 = Lerp(1.0 / 3.0, r1, a1_);
+                    // special case b2
+                    b2 = r2 * (2.0 / 3.0) + (r1 * 2.0 - r0) * (1.0 / 3.0);
+                }
+                else if (hasNext && hasPrev)
+                {
+                    // find a1
+                    vector a1_ = Lerp(0.5, Lerp(2.0, r0, r1), r2);
+                    a1 = Lerp(1.0 / 3.0, r1, a1_);
+                    // find b2
+                    vector a2_ = Lerp(0.5, Lerp(2.0, r1, r2), r3);
+                    b2 = Lerp(-1.0 / 3.0, r2, a2_);
+                }
+
+                interpolatedPosture.bone_rotation[bone] = DeCasteljauEuler(t, r1, a1, b2, r2);
             }
 
             pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
