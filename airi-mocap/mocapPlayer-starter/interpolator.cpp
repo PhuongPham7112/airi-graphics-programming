@@ -224,7 +224,7 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
 
         // if there's a prev frame
         Posture* prevPosture;
-        if (prevKeyframe > 0)
+        if (prevKeyframe >= 0)
         {
             prevPosture = pInputMotion->GetPosture(prevKeyframe);
             p0 = prevPosture->root_pos;
