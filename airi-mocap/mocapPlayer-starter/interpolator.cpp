@@ -241,29 +241,27 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
         if (!hasPrev && hasNext)
         {
             // special case a1
-            a1 = (1.0 / 3.0, p1, Lerp(2.0, p3, p2)); // p1 * (2.0 / 3.0) + (p2 * 2.0 - p3) * (1.0 / 3.0);
+            a1 = (1.0 / 3.0, p1, Lerp(2.0, p3, p2)); 
             // find b2
-            vector a2_ = (p2 * 2.0 - p1 + p3) * 0.5;
-            vector a2 = p2 * (2.0 / 3.0) + a2_ * (1.0 / 3.0);
-            b2 = p2 * (4.0 / 3.0) + a2_ * (-1.0 / 3.0);
+            vector a2_ = Lerp(0.5, Lerp(2.0, p1, p2), p3);
+            b2 = Lerp(-1.0 / 3.0, p2, a2_);
         }
         else if (!hasNext && hasPrev)
         {
             // find a1
-            vector a1_ = (p1 * 2.0 - p0 + p2) * 0.5;
-            a1 = p1 * (2.0 / 3.0) + a1_ * (1.0 / 3.0);
+            vector a1_ = Lerp(0.5, Lerp(2.0, p0, p1), p2);
+            a1 = Lerp(1.0 / 3.0, p1, a1_);
             // special case b2
             b2 = p2 * (2.0 / 3.0) + (p1 * 2.0 - p0) * (1.0 / 3.0);
         }
         else if (hasNext && hasPrev)
         {
             // find a1
-            vector a1_ = (p1 * 2.0 - p0 + p2) * 0.5;
-            a1 = p1 * (2.0 / 3.0) + a1_ * (1.0 / 3.0);
+            vector a1_ = Lerp(0.5, Lerp(2.0, p0, p1), p2);
+            a1 = Lerp(1.0 / 3.0, p1, a1_);
             // find b2
-            vector a2_ = (p2 * 2.0 - p1 + p3) * 0.5;
-            vector a2 = p2 * (2.0 / 3.0) + a2_ * (1.0 / 3.0);
-            b2 = p2 * (4.0 / 3.0) + a2_ * (-1.0 / 3.0);
+            vector a2_ = Lerp(0.5, Lerp(2.0, p1, p2), p3);
+            b2 = Lerp(-1.0 / 3.0, p2, a2_);
         }
 
         // interpolate in between

@@ -38,6 +38,7 @@ public:
 
   //Create interpolated motion and store it into pOutputMotion (which will also be allocated)
   void Interpolate(Motion * pInputMotion, Motion ** pOutputMotion, int N);
+  vector Lerp(double t, vector& vStart, vector& vEnd);
 
 protected:
   InterpolationType m_InterpolationType; //Interpolation type (Linear, Bezier)
@@ -51,7 +52,6 @@ protected:
   void Quaternion2Euler(Quaternion<double> & q, double angles[3]); 
 
   // interpolation
-  vector Lerp(double t, vector& vStart, vector& vEnd);
   Quaternion<double> Slerp(double t, Quaternion<double> & qStart, Quaternion<double> & qEnd);
   Quaternion<double> Double(Quaternion<double> p, Quaternion<double> q);
 
