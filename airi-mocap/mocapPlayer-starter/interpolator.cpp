@@ -55,44 +55,6 @@ void Interpolator::Interpolate(Motion * pInputMotion, Motion ** pOutputMotion, i
   }
 }
 
-void Interpolator::LinearInterpolationEuler(Motion * pInputMotion, Motion * pOutputMotion, int N)
-{
-  int inputLength = pInputMotion->GetNumFrames(); // frames are indexed 0, ..., inputLength-1
-
-  int startKeyframe = 0;
-  while (startKeyframe + N + 1 < inputLength)
-  {
-    int endKeyframe = startKeyframe + N + 1;
-
-    Posture * startPosture = pInputMotion->GetPosture(startKeyframe);
-    Posture * endPosture = pInputMotion->GetPosture(endKeyframe);
-
-    // copy start and end keyframe
-    pOutputMotion->SetPosture(startKeyframe, *startPosture);
-    pOutputMotion->SetPosture(endKeyframe, *endPosture);
-
-    // interpolate in between
-    for(int frame=1; frame<=N; frame++)
-    {
-      Posture interpolatedPosture;
-      double t = 1.0 * frame / (N+1);
-
-      // interpolate root position
-      interpolatedPosture.root_pos = startPosture->root_pos * (1-t) + endPosture->root_pos * t;
-
-      // interpolate bone rotations
-      for (int bone = 0; bone < MAX_BONES_IN_ASF_FILE; bone++)
-        interpolatedPosture.bone_rotation[bone] = startPosture->bone_rotation[bone] * (1-t) + endPosture->bone_rotation[bone] * t;
-
-      pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
-    }
-
-    startKeyframe = endKeyframe;
-  }
-
-  for(int frame=startKeyframe+1; frame<inputLength; frame++)
-    pOutputMotion->SetPosture(frame, *(pInputMotion->GetPosture(frame)));
-}
 
 void Interpolator::Rotation2Euler(double R[9], double angles[3])
 {
@@ -133,7 +95,7 @@ void Interpolator::Euler2Rotation(double angles[3], double R[9])
         -sin(radZ), cos(radZ), 0.0,
         0.0, 0.0, 1.0);
 
-    glm::dmat3 rot = (rotZ * rotY * rotX);
+    glm::dmat3 rot = glm::transpose(rotZ * rotY * rotX);
     std::memcpy(R, &rot, sizeof(rot));
 }
 
@@ -149,6 +111,7 @@ void Interpolator::Quaternion2Euler(Quaternion<double>& q, double angles[3])
 {
     // students should implement this
     double R[9];
+    q.Normalize(); // WARNING: modifying q
     q.Quaternion2Matrix(R); // quaternion -> rotation matrix
     Rotation2Euler(R, angles); // rotation matrix -> euler angles
 }
@@ -156,13 +119,28 @@ void Interpolator::Quaternion2Euler(Quaternion<double>& q, double angles[3])
 // quaternion interpolation
 Quaternion<double> Interpolator::Slerp(double t, Quaternion<double> & qStart, Quaternion<double> & qEnd_)
 {
-  // students should implement this
-    double theta = acos(qStart.Gets() * qEnd_.Gets() 
+  // students should implement this. WARNING: need more checking edge cases
+    Quaternion<double> result;
+    double costheta = qStart.Gets() * qEnd_.Gets()
         + qStart.Getx() * qEnd_.Getx()
-        + qStart.Gety() * qEnd_.Gety() 
-        + qStart.Getz() * qEnd_.Getz()); // in radian
-  Quaternion<double> result = qStart * (sin(theta * (1.0 - t)) / sin(theta)) + qEnd_ * (sin(theta * t) / sin(theta));
-  return result;
+        + qStart.Gety() * qEnd_.Gety()
+        + qStart.Getz() * qEnd_.Getz();
+
+    if (costheta < 0.0)
+    {
+        qEnd_ = qEnd_ * -1.0;
+        costheta = -costheta;
+    }
+
+    double theta = acos(costheta); // in radian
+    if (theta == 0.0)
+    {
+        return qStart;
+    }
+
+    double sintheta = sqrt(1.0 - costheta * costheta);
+    result = qStart * (sin(theta * (1.0 - t)) / sintheta) + qEnd_ * (sin(theta * t) / sintheta);
+    return result;
 }
 
 Quaternion<double> Interpolator::Double(Quaternion<double> p, Quaternion<double> q)
@@ -192,6 +170,45 @@ Quaternion<double> Interpolator::DeCasteljauQuaternion(double t, Quaternion<doub
   // students should implement this
   Quaternion<double> result;
   return result;
+}
+
+void Interpolator::LinearInterpolationEuler(Motion * pInputMotion, Motion * pOutputMotion, int N)
+{
+  int inputLength = pInputMotion->GetNumFrames(); // frames are indexed 0, ..., inputLength-1
+
+  int startKeyframe = 0;
+  while (startKeyframe + N + 1 < inputLength)
+  {
+    int endKeyframe = startKeyframe + N + 1;
+
+    Posture * startPosture = pInputMotion->GetPosture(startKeyframe);
+    Posture * endPosture = pInputMotion->GetPosture(endKeyframe);
+
+    // copy start and end keyframe
+    pOutputMotion->SetPosture(startKeyframe, *startPosture);
+    pOutputMotion->SetPosture(endKeyframe, *endPosture);
+
+    // interpolate in between
+    for(int frame=1; frame<=N; frame++)
+    {
+      Posture interpolatedPosture;
+      double t = 1.0 * frame / (N + 1.0);
+
+      // interpolate root position
+      interpolatedPosture.root_pos = Lerp(t, startPosture->root_pos, endPosture->root_pos);
+
+      // interpolate bone rotations
+      for (int bone = 0; bone < MAX_BONES_IN_ASF_FILE; bone++)
+        interpolatedPosture.bone_rotation[bone] = startPosture->bone_rotation[bone] * (1-t) + endPosture->bone_rotation[bone] * t;
+
+      pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
+    }
+
+    startKeyframe = endKeyframe;
+  }
+
+  for(int frame=startKeyframe+1; frame<inputLength; frame++)
+    pOutputMotion->SetPosture(frame, *(pInputMotion->GetPosture(frame)));
 }
 
 // interpolation routines
@@ -337,11 +354,9 @@ void Interpolator::LinearInterpolationQuaternion(Motion* pInputMotion, Motion* p
     // students should implement this
     int inputLength = pInputMotion->GetNumFrames(); // frames are indexed 0, ..., inputLength-1
     int startKeyframe = 0;
-
     while (startKeyframe + N + 1 < inputLength)
     {
         int endKeyframe = startKeyframe + N + 1;
-        startKeyframe = endKeyframe;
 
         Posture* startPosture = pInputMotion->GetPosture(startKeyframe);
         Posture* endPosture = pInputMotion->GetPosture(endKeyframe);
@@ -349,7 +364,36 @@ void Interpolator::LinearInterpolationQuaternion(Motion* pInputMotion, Motion* p
         // copy start and end keyframe
         pOutputMotion->SetPosture(startKeyframe, *startPosture);
         pOutputMotion->SetPosture(endKeyframe, *endPosture);
+
+        // interpolate in between
+        for (int frame = 1; frame <= N; frame++)
+        {
+            double t = 1.0 * frame / (N + 1.0);
+
+            // interpolate root position
+            Posture interpolatedPosture;
+            interpolatedPosture.root_pos = Lerp(t, startPosture->root_pos, endPosture->root_pos);
+
+            // interpolate bone rotations
+            for (int bone = 0; bone < MAX_BONES_IN_ASF_FILE; bone++)
+            {
+                Quaternion<double> qStart;
+                Euler2Quaternion(startPosture->bone_rotation[bone].p, qStart);
+
+                Quaternion<double> qEnd;
+                Euler2Quaternion(endPosture->bone_rotation[bone].p, qEnd);
+
+                Quaternion<double> qInterpolated = Slerp(t, qStart, qEnd);
+                Quaternion2Euler(qInterpolated, interpolatedPosture.bone_rotation[bone].p);
+            }
+
+            pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
+        }
+
+        startKeyframe = endKeyframe;
     }
+    for (int frame = startKeyframe + 1; frame < inputLength; frame++)
+        pOutputMotion->SetPosture(frame, *(pInputMotion->GetPosture(frame)));
 }
 
 void Interpolator::BezierInterpolationQuaternion(Motion* pInputMotion, Motion* pOutputMotion, int N)
