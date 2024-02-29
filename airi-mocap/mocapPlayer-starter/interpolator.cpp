@@ -168,7 +168,6 @@ vector Interpolator::DeCasteljauEuler(double t, vector p0, vector p1, vector p2,
 Quaternion<double> Interpolator::DeCasteljauQuaternion(double t, Quaternion<double> p0, Quaternion<double> p1, Quaternion<double> p2, Quaternion<double> p3)
 {
   // students should implement this
-  Quaternion<double> result;
   Quaternion<double> q0 = Slerp(t, p0, p1);
   Quaternion<double> q1 = Slerp(t, p1, p2);
   Quaternion<double> q2 = Slerp(t, p2, p3);
@@ -208,7 +207,6 @@ void Interpolator::LinearInterpolationEuler(Motion * pInputMotion, Motion * pOut
 
       pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
     }
-
     startKeyframe = endKeyframe;
   }
 
@@ -231,8 +229,10 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
         int endKeyframe = startKeyframe + N + 1;
         int nextKeyframe = endKeyframe + N + 1;
 
-        vector p0, p1, p2, p3; // root pos
-        vector a1, b2; // control points
+        // prev, start, end, next
+        vector p0, p1, p2, p3;
+        // control points
+        vector a1, b2; 
 
         Posture* startPosture = pInputMotion->GetPosture(startKeyframe);
         Posture* endPosture = pInputMotion->GetPosture(endKeyframe);
@@ -344,7 +344,6 @@ void Interpolator::BezierInterpolationEuler(Motion* pInputMotion, Motion* pOutpu
 
                 interpolatedPosture.bone_rotation[bone] = DeCasteljauEuler(t, r1, a1, b2, r2);
             }
-
             pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
         }
         startKeyframe = endKeyframe;
@@ -391,10 +390,8 @@ void Interpolator::LinearInterpolationQuaternion(Motion* pInputMotion, Motion* p
                 Quaternion<double> qInterpolated = Slerp(t, qStart, qEnd);
                 Quaternion2Euler(qInterpolated, interpolatedPosture.bone_rotation[bone].p);
             }
-
             pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
         }
-
         startKeyframe = endKeyframe;
     }
     for (int frame = startKeyframe + 1; frame < inputLength; frame++)
@@ -405,21 +402,135 @@ void Interpolator::BezierInterpolationQuaternion(Motion* pInputMotion, Motion* p
 {
     // students should implement this
     int inputLength = pInputMotion->GetNumFrames(); // frames are indexed 0, ..., inputLength-1
-    int startKeyframe = 0;
+    int startKeyframe = 0, hasPrev = 0, hasNext = 0;
 
     while (startKeyframe + N + 1 < inputLength)
     {
+        hasPrev = 0;
+        hasNext = 0;
+        int prevKeyframe = startKeyframe - (N + 1);
         int endKeyframe = startKeyframe + N + 1;
+        int nextKeyframe = endKeyframe + N + 1;
+
+        // prev, start, end, next quat
+        Quaternion<double> q0, q1, q2, q3;
+        // control points for rotation
+        Quaternion<double> qa1, qb2;
+        // prev, start, end, next root pos
+        vector p0, p1, p2, p3;
+        // control points for root pos
+        vector a1, b2;
 
         Posture* startPosture = pInputMotion->GetPosture(startKeyframe);
         Posture* endPosture = pInputMotion->GetPosture(endKeyframe);
-
+        
         // copy start and end keyframe
         pOutputMotion->SetPosture(startKeyframe, *startPosture);
         pOutputMotion->SetPosture(endKeyframe, *endPosture);
 
+        p1 = startPosture->root_pos;
+        p2 = endPosture->root_pos;
 
+        // if there's a prev frame
+        Posture* prevPosture;
+        if (prevKeyframe >= 0)
+        {
+            prevPosture = pInputMotion->GetPosture(prevKeyframe);
+            p0 = prevPosture->root_pos;
+            hasPrev = 1;
+        }
 
+        // if there's a next frame
+        Posture* nextPosture;
+        if (nextKeyframe < inputLength)
+        {
+            nextPosture = pInputMotion->GetPosture(nextKeyframe);
+            p3 = nextPosture->root_pos;
+            hasNext = 1;
+        }
+
+        // interpolate in between
+        for (int frame = 1; frame <= N; frame++)
+        {
+            double t = 1.0 * frame / (N + 1.0); // [0, 1]
+
+            // find control points
+            if (!hasPrev)
+            {
+                // special case a1
+                a1 = Lerp(1.0 / 3.0, p1, Lerp(2.0, p3, p2));
+                // find b2
+                vector a2_ = Lerp(0.5, Lerp(2.0, p1, p2), p3);
+                b2 = Lerp(-1.0 / 3.0, p2, a2_);
+            }
+            else if (!hasNext)
+            {
+                // find a1
+                vector a1_ = Lerp(0.5, Lerp(2.0, p0, p1), p2);
+                a1 = Lerp(1.0 / 3.0, p1, a1_);
+                // special case b2
+                b2 = Lerp(1.0 / 3.0, p2, Lerp(2.0, p0, p1));
+            }
+            else
+            {
+                // find a1
+                vector a1_ = Lerp(0.5, Lerp(2.0, p0, p1), p2);
+                a1 = Lerp(1.0 / 3.0, p1, a1_);
+                // find b2
+                vector a2_ = Lerp(0.5, Lerp(2.0, p1, p2), p3);
+                b2 = Lerp(-1.0 / 3.0, p2, a2_);
+            }
+
+            // interpolate root position (Bezier)
+            Posture interpolatedPosture;
+            interpolatedPosture.root_pos = DeCasteljauEuler(t, p1, a1, b2, p2);
+
+            // interpolate bone rotations (Bezier)
+            for (int bone = 0; bone < MAX_BONES_IN_ASF_FILE; bone++)
+            {
+                Euler2Quaternion(startPosture->bone_rotation[bone].p, q1);
+                Euler2Quaternion(endPosture->bone_rotation[bone].p, q2);
+
+                if (hasPrev)
+                {
+                    Euler2Quaternion(prevPosture->bone_rotation[bone].p, q0);
+                }
+
+                if (hasNext)
+                {
+                    Euler2Quaternion(nextPosture->bone_rotation[bone].p, q3);
+                }
+
+                // find control points
+                if (!hasPrev)
+                {
+                    // special case a1
+                    qa1 = Slerp(1.0 / 3.0, q1, Double(q3, q2));
+                    // find b2
+                    Quaternion<double> qa2_ = Slerp(0.5, Double(q1, q2), q3);
+                    qb2 = Slerp(-1.0 / 3.0, q2, qa2_);
+                }
+                else if (!hasNext)
+                {
+                    // find a1
+                    Quaternion<double> qa1_ = Slerp(0.5, Double(q0, q1), q2);
+                    qa1 = Slerp(1.0 / 3.0, q1, qa1_);
+                    // special case b2
+                    qb2 = Slerp(1.0 / 3.0, q2, Double(q0, q1));
+                }
+                else
+                {
+                    // find a1
+                    Quaternion<double> qa1_ = Slerp(0.5, Double(q0, q1), q2);
+                    qa1 = Slerp(1.0 / 3.0, q1, qa1_);
+                    // find b2
+                    Quaternion<double> qa2_ = Slerp(0.5, Double(q1, q2), q3);
+                    qb2 = Slerp(-1.0 / 3.0, q2, qa2_);
+                }
+                Quaternion2Euler(DeCasteljauQuaternion(t, q1, qa1, qb2, q2), interpolatedPosture.bone_rotation[bone].p);
+            }
+            pOutputMotion->SetPosture(startKeyframe + frame, interpolatedPosture);
+        }
         startKeyframe = endKeyframe;
     }
     for (int frame = startKeyframe + 1; frame < inputLength; frame++)
