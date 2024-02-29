@@ -169,7 +169,12 @@ Quaternion<double> Interpolator::DeCasteljauQuaternion(double t, Quaternion<doub
 {
   // students should implement this
   Quaternion<double> result;
-  return result;
+  Quaternion<double> q0 = Slerp(t, p0, p1);
+  Quaternion<double> q1 = Slerp(t, p1, p2);
+  Quaternion<double> q2 = Slerp(t, p2, p3);
+  Quaternion<double> r0 = Slerp(t, q0, q1); 
+  Quaternion<double> r1 = Slerp(t, q1, q2);
+  return Slerp(t, r0, r1);
 }
 
 void Interpolator::LinearInterpolationEuler(Motion * pInputMotion, Motion * pOutputMotion, int N)
@@ -405,7 +410,6 @@ void Interpolator::BezierInterpolationQuaternion(Motion* pInputMotion, Motion* p
     while (startKeyframe + N + 1 < inputLength)
     {
         int endKeyframe = startKeyframe + N + 1;
-        startKeyframe = endKeyframe;
 
         Posture* startPosture = pInputMotion->GetPosture(startKeyframe);
         Posture* endPosture = pInputMotion->GetPosture(endKeyframe);
@@ -413,5 +417,11 @@ void Interpolator::BezierInterpolationQuaternion(Motion* pInputMotion, Motion* p
         // copy start and end keyframe
         pOutputMotion->SetPosture(startKeyframe, *startPosture);
         pOutputMotion->SetPosture(endKeyframe, *endPosture);
+
+
+
+        startKeyframe = endKeyframe;
     }
+    for (int frame = startKeyframe + 1; frame < inputLength; frame++)
+        pOutputMotion->SetPosture(frame, *(pInputMotion->GetPosture(frame)));
 }
