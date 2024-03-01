@@ -121,24 +121,29 @@ Quaternion<double> Interpolator::Slerp(double t, Quaternion<double> & qStart, Qu
 {
   // students should implement this. WARNING: need more checking edge cases
     Quaternion<double> result;
-    double costheta = qStart.Gets() * qEnd_.Gets()
+    double dotProduct = qStart.Gets() * qEnd_.Gets()
         + qStart.Getx() * qEnd_.Getx()
         + qStart.Gety() * qEnd_.Gety()
         + qStart.Getz() * qEnd_.Getz();
 
-    if (costheta < 0.0)
+    // opposite
+    if (dotProduct < 0.0)
     {
         qEnd_ = qEnd_ * -1.0;
-        costheta = -costheta;
+        dotProduct = -dotProduct;
     }
-
-    double theta = acos(costheta); // in radian
-    if (theta == 0.0)
+    // identical
+    else if (dotProduct > 0.0 && std::abs(dotProduct) >= 1.0)
     {
         return qStart;
     }
-
-    double sintheta = sqrt(1.0 - costheta * costheta);
+    double theta = acos(dotProduct); // in radian
+    double sintheta = sqrt(1.0 - dotProduct * dotProduct);
+    // division by zero case
+    if (std::abs(sintheta) < 0.001)
+    {
+        result = qStart * 0.5 + qEnd_ * 0.5;
+    }
     result = qStart * (sin(theta * (1.0 - t)) / sintheta) + qEnd_ * (sin(theta * t) / sintheta);
     return result;
 }
