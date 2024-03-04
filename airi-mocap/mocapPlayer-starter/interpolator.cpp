@@ -9,6 +9,8 @@
 #include <glm/gtc/type_ptr.hpp> // For glm::make_mat4
 #include <glm/glm.hpp>
 #include <cmath>
+#include <iostream>
+#include <chrono>
 
 double degreesToRadians(double degrees) {
     return degrees * M_PI / 180.0;
@@ -38,6 +40,8 @@ void Interpolator::Interpolate(Motion * pInputMotion, Motion ** pOutputMotion, i
   //Allocate new motion
   *pOutputMotion = new Motion(pInputMotion->GetNumFrames(), pInputMotion->GetSkeleton()); 
   
+  // Start measuring time
+  auto start = std::chrono::high_resolution_clock::now();
   // N: number of skipped frames
   //Perform the interpolation
   if ((m_InterpolationType == LINEAR) && (m_AngleRepresentation == EULER))
@@ -53,6 +57,15 @@ void Interpolator::Interpolate(Motion * pInputMotion, Motion ** pOutputMotion, i
     printf("Error: unknown interpolation / angle representation type.\n");
     exit(1);
   }
+
+  // Stop measuring time
+  auto stop = std::chrono::high_resolution_clock::now();
+
+  // Calculate the duration in milliseconds
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+
+  // Output the execution time
+  std::cout << "Execution time: " << duration.count() << " milliseconds" << std::endl;
 }
 
 
