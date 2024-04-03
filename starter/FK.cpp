@@ -200,10 +200,14 @@ vector<int> FK::getJointDescendents(int jointID) const
 // Joint orientations are always given in XYZ order (Maya convention).
 // Output: localTransforms and globalTransforms.
 void FK::computeLocalAndGlobalTransforms(
-    const vector<Vec3d> & translations, const vector<Vec3d> & eulerAngles, 
-    const vector<Vec3d> & jointOrientationEulerAngles, const vector<RotateOrder> & rotateOrders,
-    const std::vector<int> jointParents, const vector<int> & jointUpdateOrder,
-    vector<RigidTransform4d> & localTransforms, vector<RigidTransform4d> & globalTransforms)
+    const vector<Vec3d> & translations, 
+    const vector<Vec3d> & eulerAngles, 
+    const vector<Vec3d> & jointOrientationEulerAngles, 
+    const vector<RotateOrder> & rotateOrders,
+    const std::vector<int> jointParents, 
+    const vector<int> & jointUpdateOrder,
+    vector<RigidTransform4d> & localTransforms, 
+    vector<RigidTransform4d> & globalTransforms)
 {
   // Students should implement this.
   // First, compute the localTransform for each joint, using eulerAngles and jointOrientationEulerAngles,
@@ -218,9 +222,24 @@ void FK::computeLocalAndGlobalTransforms(
     0, 1, 0, 0,
     0, 0, 1, 0,
     0, 0, 0, 1 };
+  double R[9];
+  double angles[3];
   for(int i=0; i<localTransforms.size(); i++)
   {
-    localTransforms[i] = RigidTransform4d(identity);
+    // local transformation
+    angles[0] = eulerAngles[i][0];
+    angles[1] = eulerAngles[i][1];
+    angles[2] = eulerAngles[i][2];
+    euler2Rotation(angles, R, rotateOrders[i]);
+    Mat3d localRotation = Mat3d(R);
+
+    // joint orient
+    angles[0] = jointOrientationEulerAngles[i][0];
+    angles[1] = jointOrientationEulerAngles[i][1];
+    angles[2] = jointOrientationEulerAngles[i][2];
+    euler2Rotation(angles, R, rotateOrders[i]);
+    Mat3d jointOrient = Mat3d(R);
+    localTransforms[i] = RigidTransform4d(jointOrient * localRotation, translations[i]);
     globalTransforms[i] = RigidTransform4d(identity);
   }
 }
