@@ -93,11 +93,6 @@ void Skinning::applySkinning(const RigidTransform4d * jointSkinTransforms, doubl
     newMeshVertexPositions[3 * i + 0] = newSkinningPos[0];
     newMeshVertexPositions[3 * i + 1] = newSkinningPos[1];
     newMeshVertexPositions[3 * i + 2] = newSkinningPos[2];
-
-
-    //newMeshVertexPositions[3 * i + 0] = restMeshVertexPositions[3 * i + 0];
-    //newMeshVertexPositions[3 * i + 1] = restMeshVertexPositions[3 * i + 1];
-    //newMeshVertexPositions[3 * i + 2] = restMeshVertexPositions[3 * i + 2];
   }
 }
 

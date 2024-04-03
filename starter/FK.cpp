@@ -242,7 +242,7 @@ void FK::computeSkinningTransforms(
     0, 0, 0, 1 };
   for(int i=0; i<skinTransforms.size(); i++)
   {
-    skinTransforms[i] = RigidTransform4d(identity);
+      skinTransforms[i] = globalTransforms[i] * invRestGlobalTransforms[i];
   }
 }
 
