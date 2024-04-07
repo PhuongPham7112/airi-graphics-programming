@@ -224,7 +224,7 @@ void FK::computeLocalAndGlobalTransforms(
     0, 0, 0, 1 };
   double R[9];
   double angles[3];
-  for(int i=0; i<localTransforms.size(); i++)
+  for(int i: jointUpdateOrder)
   {
     // local transformation
     angles[0] = eulerAngles[i][0];
@@ -240,7 +240,14 @@ void FK::computeLocalAndGlobalTransforms(
     euler2Rotation(angles, R, rotateOrders[i]);
     Mat3d jointOrient = Mat3d(R);
     localTransforms[i] = RigidTransform4d(jointOrient * localRotation, translations[i]);
-    globalTransforms[i] = RigidTransform4d(identity);
+    if (jointParents[i] > -1)
+    {
+        globalTransforms[i] = globalTransforms[jointParents[i]] * localTransforms[i];
+    }
+    else
+    {
+        globalTransforms[i] = localTransforms[i];
+    }
   }
 }
 
