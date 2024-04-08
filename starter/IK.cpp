@@ -64,6 +64,53 @@ void forwardKinematicsFunction(
   // Then, implement the same algorithm into this function. To do so,
   // you can use fk.getJointUpdateOrder(), fk.getJointRestTranslation(), and fk.getJointRotateOrder() functions.
   // Also useful is the multiplyAffineTransform4ds function in minivectorTemplate.h .
+
+    // constructing the order from given ids
+    std::vector<int> orderedIDs(numIKJoints);
+    for (int i = 0; i < numIKJoints; i++)
+    {
+        int id = IKJointIDs[i];
+        int order = fk.getJointUpdateOrder(id);
+        orderedIDs[order] = id;
+    }
+
+    double R[9];
+    double angles[3];
+    vector<RigidTransform4d> globalTransforms(numIKJoints);
+    for (int i : orderedIDs)
+    {
+        // local transformation
+        angles[0] = eulerAngles[i * 3];
+        angles[1] = eulerAngles[i * 3 + 1];
+        angles[2] = eulerAngles[i * 3 + 2];
+        euler2Rotation(angles, R, fk.getJointRotateOrder(i));
+        Mat3d localRotation = Mat3d(R);
+
+        // joint orient
+        angles[0] = fk.getJointOrient(i * 3);
+        angles[1] = fk.getJointOrient(i * 3 + 1);
+        angles[2] = fk.getJointOrient(i * 3 + 2);
+        euler2Rotation(angles, R, fk.getJointRotateOrder(i));
+        Mat3d jointOrient = Mat3d(R);
+
+        // local transform
+        RigidTransform4d localTransform = RigidTransform4d(jointOrient * localRotation, fk.getJointRestTranslation(i));
+
+        // global transform
+        int parentID = fk.getJointParent(i);
+        if (parentID == -1)
+        {
+            globalTransforms[i] = localTransform;
+        }
+        else
+        {
+            globalTransforms[i] = globalTransforms[parentID] * localTransform;
+        }
+        Vec4d handle = globalTransforms[i] * Vec4d(0, 0, 0, 1);
+        handlePositions[i * 3] = handle[0];
+        handlePositions[i * 3 + 1] = handle[1];
+        handlePositions[i * 3 + 2] = handle[2];
+    }
   // It would be in principle possible to unify this "forwardKinematicsFunction" and FK::computeLocalAndGlobalTransforms(),
   // so that code is only written once. We considered this; but it is actually not easily doable.
   // If you find a good approach, feel free to document it in the README file, for extra credit.
