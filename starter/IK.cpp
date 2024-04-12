@@ -1,4 +1,4 @@
-#include "IK.h"
+﻿#include "IK.h"
 #include "FK.h"
 #include "minivectorTemplate.h"
 #include <Eigen/Dense>
@@ -64,21 +64,13 @@ void forwardKinematicsFunction(
   // Then, implement the same algorithm into this function. To do so,
   // you can use fk.getJointUpdateOrder(), fk.getJointRestTranslation(), and fk.getJointRotateOrder() functions.
   // Also useful is the multiplyAffineTransform4ds function in minivectorTemplate.h .
-
-    // constructing the order from given ids
-    std::vector<int> orderedIDs(numIKJoints);
-    for (int i = 0; i < numIKJoints; i++)
-    {
-        int id = IKJointIDs[i];
-        int order = fk.getJointUpdateOrder(id);
-        orderedIDs[order] = id;
-    }
+    int numJoints = fk.getNumJoints();
 
     // The usual FK algorithms
     real angles[3];
-    vector<Mat3<real>> globalRotTransforms(numIKJoints);
-    vector<Vec3<real>> globalTransTransforms(numIKJoints);
-    for (int i : orderedIDs)
+    vector<Mat3<real>> globalRotTransforms(numJoints), localRotTransforms(numJoints);
+    vector<Vec3<real>> globalTransTransforms(numJoints), localTransTransforms(numJoints);
+    for (int i = 0; i < numJoints; i++)
     {
         // local transformation
         angles[0] = eulerAngles[i * 3];
@@ -93,27 +85,30 @@ void forwardKinematicsFunction(
         Mat3<real> jointOrient = Euler2Rotation(angles, fk.getJointRotateOrder(i));
 
         // calculate local trans
-        Mat3<real> localRot = jointOrient * localRotation;
-        Vec3<real> localTrans = Vec3<real>(fk.getJointRestTranslation(i)[0], fk.getJointRestTranslation(i)[1], fk.getJointRestTranslation(i)[2]);
+        localRotTransforms[i] = jointOrient * localRotation;
+        localTransTransforms[i] = Vec3<real>(fk.getJointRestTranslation(i)[0], fk.getJointRestTranslation(i)[1], fk.getJointRestTranslation(i)[2]);
+        globalRotTransforms[i] = localRotTransforms[i];
+        globalTransTransforms[i] = localTransTransforms[i];
+    }
 
-        int parentID = fk.getJointParent(i);
-        if (parentID == -1)
-        {
-            globalRotTransforms[i] = localRot;
-            globalTransTransforms[i] = localTrans;
-        }
-        else
+    for (int i = 0; i < numJoints; i++)
+    {
+        int order = fk.getJointUpdateOrder(i);
+        int parentID = fk.getJointParent(order);
+        if (parentID != -1)
         {
             multiplyAffineTransform4ds(globalRotTransforms[parentID], globalTransTransforms[parentID],
-                localRot, localTrans,
+                localRotTransforms[i], localTransTransforms[i],
                 globalRotTransforms[i], globalTransTransforms[i]);
         }
+    }
 
-        // todo: https://piazza.com/class/lr4b78cr4gb4om/post/109
-        Vec3<real> handle = globalRotTransforms[i] * Vec3<real>(0, 0, 0) + globalTransTransforms[i];
-        handlePositions[i * 3] = handle[0];
-        handlePositions[i * 3 + 1] = handle[1];
-        handlePositions[i * 3 + 2] = handle[2];
+    for (int i = 0; i < numIKJoints; i++)
+    {
+        int ik = IKJointIDs[i];
+        handlePositions[i * 3] = globalTransTransforms[ik][0];
+        handlePositions[i * 3 + 1] = globalTransTransforms[ik][1];
+        handlePositions[i * 3 + 2] = globalTransTransforms[ik][2];
     }
   // It would be in principle possible to unify this "forwardKinematicsFunction" and FK::computeLocalAndGlobalTransforms(),
   // so that code is only written once. We considered this; but it is actually not easily doable.
@@ -184,5 +179,18 @@ void IK::doIK(const Vec3d * targetHandlePositions, Vec3d * jointEulerAngles)
   jointEulerAngles->convertToArray(anglesArray);
   targetHandlePositions->convertToArray(handlesArray);
   ::function(adolc_tagID, FKInputDim, FKOutputDim, anglesArray, handlesArray);
+  // You may find the following helpful:
+  //int numJoints = fk->getNumJoints(); // Note that is NOT the same as numIKJoints!
+
+  // Students should implement this.
+  // Use adolc to evalute the forwardKinematicsFunction and its gradient (Jacobian). It was trained in train_adolc().
+  // Specifically, use ::function, and ::jacobian .
+  // See ADOLCExample.cpp .
+  //
+  // Use it implement the Tikhonov IK method (or the pseudoinverse method for extra credit).
+  // Note that at entry, "jointEulerAngles" contains the input Euler angles. 
+  // Upon exit, jointEulerAngles should contain the new Euler angles.
+
+  // following the exact format in ADOLCExample.cpp:
 }
 
