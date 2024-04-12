@@ -75,9 +75,9 @@ void forwardKinematicsFunction(
     }
 
     // The usual FK algorithms
-    real R[9];
     real angles[3];
-    vector<RigidTransform4d> globalTransforms(numIKJoints);
+    vector<Mat3<real>> globalRotTransforms(numIKJoints);
+    vector<Vec3<real>> globalTransTransforms(numIKJoints);
     for (int i : orderedIDs)
     {
         // local transformation
@@ -92,10 +92,28 @@ void forwardKinematicsFunction(
         angles[2] = fk.getJointOrient(i)[2];
         Mat3<real> jointOrient = Euler2Rotation(angles, fk.getJointRotateOrder(i));
 
+        // calculate local trans
+        Mat3<real> localRot = jointOrient * localRotation;
+        Vec3<real> localTrans = Vec3<real>(fk.getJointRestTranslation(i)[0], fk.getJointRestTranslation(i)[1], fk.getJointRestTranslation(i)[2]);
+
+        int parentID = fk.getJointParent(i);
+        if (parentID == -1)
+        {
+            globalRotTransforms[i] = localRot;
+            globalTransTransforms[i] = localTrans;
+        }
+        else
+        {
+            multiplyAffineTransform4ds(globalRotTransforms[parentID], globalTransTransforms[parentID],
+                localRot, localTrans,
+                globalRotTransforms[i], globalTransTransforms[i]);
+        }
+
         // todo: https://piazza.com/class/lr4b78cr4gb4om/post/109
-        handlePositions[i * 3];
-        handlePositions[i * 3 + 1];
-        handlePositions[i * 3 + 2];
+        Vec3<real> handle = globalRotTransforms[i] * Vec3<real>(0, 0, 0) + globalTransTransforms[i];
+        handlePositions[i * 3] = handle[0];
+        handlePositions[i * 3 + 1] = handle[1];
+        handlePositions[i * 3 + 2] = handle[2];
     }
   // It would be in principle possible to unify this "forwardKinematicsFunction" and FK::computeLocalAndGlobalTransforms(),
   // so that code is only written once. We considered this; but it is actually not easily doable.
@@ -161,5 +179,10 @@ void IK::doIK(const Vec3d * targetHandlePositions, Vec3d * jointEulerAngles)
   // Use it implement the Tikhonov IK method (or the pseudoinverse method for extra credit).
   // Note that at entry, "jointEulerAngles" contains the input Euler angles. 
   // Upon exit, jointEulerAngles should contain the new Euler angles.
+  double* anglesArray = new double[FKInputDim];
+  double* handlesArray = new double[FKOutputDim];
+  jointEulerAngles->convertToArray(anglesArray);
+  targetHandlePositions->convertToArray(handlesArray);
+  ::function(adolc_tagID, FKInputDim, FKOutputDim, anglesArray, handlesArray);
 }
 
