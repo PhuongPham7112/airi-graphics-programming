@@ -174,23 +174,59 @@ void IK::doIK(const Vec3d * targetHandlePositions, Vec3d * jointEulerAngles)
   // Use it implement the Tikhonov IK method (or the pseudoinverse method for extra credit).
   // Note that at entry, "jointEulerAngles" contains the input Euler angles. 
   // Upon exit, jointEulerAngles should contain the new Euler angles.
-  double* anglesArray = new double[FKInputDim];
-  double* handlesArray = new double[FKOutputDim];
-  jointEulerAngles->convertToArray(anglesArray);
-  targetHandlePositions->convertToArray(handlesArray);
-  ::function(adolc_tagID, FKInputDim, FKOutputDim, anglesArray, handlesArray);
-  // You may find the following helpful:
-  //int numJoints = fk->getNumJoints(); // Note that is NOT the same as numIKJoints!
+  
+  int n = FKInputDim; // input dimension n 
+  int m = FKOutputDim; // output dimension m
 
-  // Students should implement this.
-  // Use adolc to evalute the forwardKinematicsFunction and its gradient (Jacobian). It was trained in train_adolc().
-  // Specifically, use ::function, and ::jacobian .
-  // See ADOLCExample.cpp .
-  //
-  // Use it implement the Tikhonov IK method (or the pseudoinverse method for extra credit).
-  // Note that at entry, "jointEulerAngles" contains the input Euler angles. 
-  // Upon exit, jointEulerAngles should contain the new Euler angles.
+  std::vector<double> handlesArray(m); // this will be double output_y_values[] = {0.0, 0.0};
+  ::function(adolc_tagID, m, n, jointEulerAngles->data(), handlesArray.data());
 
-  // following the exact format in ADOLCExample.cpp:
+
+  vector<double> jacobianMatrix(m * n); // m rows n cols
+  vector<double*> jacobianMatrixRows; // pointer array where each pointer points to one row of the jacobian matrix
+  // init row
+  for (int i = 0; i < m; i++)
+  {
+      jacobianMatrixRows.push_back(&jacobianMatrix[i * n]);
+  }
+  // call jacobian
+  ::jacobian(adolc_tagID, m, n, jointEulerAngles->data(), jacobianMatrixRows.data()); // each row is the gradient of one output component of the function
+
+  // regularization (J^T * J + α * I) * Δθ = J^T * Δb
+  Eigen::VectorXd deltaAngle(n); // trying to solve this for new angles vector n x 1
+
+  {
+      Eigen::MatrixXd J(m, n); // define a 3x3 Eigen column-major matrix
+          // assign values to J
+      for (int rowID = 0; rowID < m; rowID++)
+          for (int colID = 0; colID < n; colID++)
+              J(rowID, colID) = jacobianMatrix[n * rowID + colID];
+      Eigen::MatrixXd JTranspose(n, m); JTranspose = J.transpose();
+      // right hand side = input dim
+      Eigen::VectorXd rightSide(m);
+      Eigen::VectorXd deltaHandle(m);
+      for (int i = 0; i < m; i++)
+      {
+          deltaHandle(i) = targetHandlePositions->data()[i] - handlesArray.data()[i];
+      }
+      rightSide = JTranspose * deltaHandle;
+      // left handside = output dim
+      double alpha = 0.01;
+      Eigen::MatrixXd JJT = JTranspose * J;
+      Eigen::MatrixXd identity = Eigen::MatrixXd::Identity(n, n);
+      Eigen::MatrixXd leftSide = JJT + alpha * identity;
+      deltaAngle = leftSide.ldlt().solve(rightSide);
+  }
+  
+  // to update jointEulerAngles
+  vector<double> deltaTheta(n);
+  for (int i = 0; i < n; i++)
+      deltaTheta[i] = deltaAngle[i];
+  Vec3d dTheta;
+  for (int i = 0; i < numJoints; i++)
+  {
+      dTheta = Vec3d(deltaTheta[i * 3], deltaTheta[i * 3 + 1], deltaTheta[i * 3 + 2]);
+      jointEulerAngles[i] += dTheta;
+  }
 }
 
