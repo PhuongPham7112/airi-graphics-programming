@@ -195,9 +195,11 @@ void IK::doIK(const Vec3d * targetHandlePositions, Vec3d * jointEulerAngles)
   // regularization (J^T * J + α * I) * Δθ = J^T * Δb
   Eigen::VectorXd deltaAngle(n); // trying to solve this for new angles vector n x 1
 
+  int mode = 1;
+  if (mode == 0)
   {
       Eigen::MatrixXd J(m, n); // define a 3x3 Eigen column-major matrix
-          // assign values to J
+      // assign values to J
       for (int rowID = 0; rowID < m; rowID++)
           for (int colID = 0; colID < n; colID++)
               J(rowID, colID) = jacobianMatrix[n * rowID + colID];
@@ -217,16 +219,34 @@ void IK::doIK(const Vec3d * targetHandlePositions, Vec3d * jointEulerAngles)
       Eigen::MatrixXd leftSide = JJT + alpha * identity;
       deltaAngle = leftSide.ldlt().solve(rightSide);
   }
+  // pseudo inverse
+  else if (mode == 1)
+  { 
+      Eigen::MatrixXd J(m, n); // define a 3x3 Eigen column-major matrix
+      // assign values to J
+      for (int rowID = 0; rowID < m; rowID++)
+          for (int colID = 0; colID < n; colID++)
+              J(rowID, colID) = jacobianMatrix[n * rowID + colID];
+      Eigen::MatrixXd JTranspose(n, m); JTranspose = J.transpose();
+      // pseudo inverse
+      Eigen::MatrixXd JDagger(n, m); 
+      JDagger = JTranspose * (J * JTranspose).inverse();
+      // rhs
+      Eigen::VectorXd deltaHandle(m);
+      for (int i = 0; i < m; i++)
+      {
+          deltaHandle(i) = targetHandlePositions->data()[i] - handlesArray.data()[i];
+      }
+      Eigen::VectorXd rightSide(m);
+      deltaAngle = JDagger * deltaHandle;
+  }
   
-  // to update jointEulerAngles
   vector<double> deltaTheta(n);
   for (int i = 0; i < n; i++)
       deltaTheta[i] = deltaAngle[i];
-  Vec3d dTheta;
   for (int i = 0; i < numJoints; i++)
   {
-      dTheta = Vec3d(deltaTheta[i * 3], deltaTheta[i * 3 + 1], deltaTheta[i * 3 + 2]);
-      jointEulerAngles[i] += dTheta;
+      jointEulerAngles[i] += Vec3d(deltaTheta[i * 3], deltaTheta[i * 3 + 1], deltaTheta[i * 3 + 2]);
   }
 }
 
