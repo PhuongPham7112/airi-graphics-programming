@@ -1,0 +1,1 @@
+Implemented all the basic requirements + Pseudo inverse method (demonstrated the difference in the video).
