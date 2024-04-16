@@ -195,7 +195,7 @@ void IK::doIK(const Vec3d * targetHandlePositions, Vec3d * jointEulerAngles)
   // regularization (J^T * J + α * I) * Δθ = J^T * Δb
   Eigen::VectorXd deltaAngle(n); // trying to solve this for new angles vector n x 1
 
-  int mode = 1;
+  int mode = 0;
   if (mode == 0)
   {
       Eigen::MatrixXd J(m, n); // define a 3x3 Eigen column-major matrix

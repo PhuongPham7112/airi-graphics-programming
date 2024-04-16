@@ -1,1 +1,3 @@
-Implemented all the basic requirements + Pseudo inverse method (demonstrated the difference in the video).
+Implemented all the basic requirements + Pseudo inverse method + Dual Quaternion blending (demonstrated the difference in the video under this folder). To switch between the mode, there's a variable called mode in IK.cpp and skinning.cpp.
+
+Overall, Pseudo inverse explodes more easily than the default method of Regularization, but using Dual Quaternion blending does seem to stabilize the weird skin artifacts better than the traditional linear skin blending.

@@ -98,9 +98,11 @@ void Skinning::applySkinning(const RigidTransform4d * jointSkinTransforms, doubl
     }
     else
     {
+        // dual quat skinning
         glm::ddualquat dlb;
         dlb.real = glm::highp_dquat(0.0, 0.0, 0.0, 0.0);
         dlb.dual = glm::highp_dquat(0.0, 0.0, 0.0, 0.0);
+        double rotation[9];
         for (int j = 0; j < numJointsInfluencingEachVertex; j++)
         {
             int jointIdx = meshSkinningJoints[i * numJointsInfluencingEachVertex + j]; // get joint index that affect mesh vertex i
@@ -108,7 +110,6 @@ void Skinning::applySkinning(const RigidTransform4d * jointSkinTransforms, doubl
             RigidTransform4d transformMatrix = jointSkinTransforms[jointIdx];
         
             // rotation component
-            double rotation[9];
             transformMatrix.getRotation().convertToArray(rotation);
             glm::highp_dmat3 rotationMat = glm::highp_dmat3(rotation[0], rotation[3], rotation[6], // col 1
                 rotation[1], rotation[4], rotation[7], // col 2
@@ -129,15 +130,15 @@ void Skinning::applySkinning(const RigidTransform4d * jointSkinTransforms, doubl
         glm::dquat c0 = dlb.real / c0_len;
         glm::dquat c1 = dlb.dual / c0_len;
 
-        double w0 = c0[0];
-        double x0 = c0[1];
-        double y0 = c0[2];
-        double z0 = c0[3];
+        double w0 = c0.w;
+        double x0 = c0.x;
+        double y0 = c0.y;
+        double z0 = c0.z;
 
-        double we = c1[0];
-        double xe = c1[1];
-        double ye = c1[2];
-        double ze = c1[3];
+        double we = c1.w;
+        double xe = c1.x;
+        double ye = c1.y;
+        double ze = c1.z;
 
         double t0 = 2.0 * (-we * x0 + xe * w0 - ye * z0 + ze * y0);
         double t1 = 2.0 * (-we * y0 + xe * z0 + ye * w0 - ze * x0);
