@@ -2,6 +2,8 @@
 #define SKINNING_H
 
 #include "transform4d.h"
+#include <glm\glm\gtx\dual_quaternion.hpp>
+#include <glm\glm\gtc\quaternion.hpp>
 #include <vector>
 #include <string>
 
