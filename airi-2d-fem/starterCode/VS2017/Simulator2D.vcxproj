@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{C82F778C-C535-4907-B7AB-CCC02D0931E0}</ProjectGuid>
+    <RootNamespace>Simulator2D</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Simulator2D</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\vega;$(ProjectDir)\..;$(ProjectDir)\..\freeglut-x64\include;$(ProjectDir)\..\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>freeglutd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\..\freeglut-x64\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <OutputFile>$(OutDir)\Simulator2D.exe</OutputFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)\..\vega;$(ProjectDir)\..;$(ProjectDir)\..\freeglut-x64\include;$(ProjectDir)\..\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>freeglut.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(ProjectDir)\..\freeglut-x64\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <OutputFile>$(OutDir)\Simulator2D.exe</OutputFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\baseModel2D.h" />
+    <ClInclude Include="..\corotationalLinearFEM2D.h" />
+    <ClInclude Include="..\imgui\examples\imgui_impl_glut.h" />
+    <ClInclude Include="..\imgui\examples\imgui_impl_opengl2.h" />
+    <ClInclude Include="..\imgui\imgui.h" />
+    <ClInclude Include="..\linearFEM2D.h" />
+    <ClInclude Include="..\massSpring2D.h" />
+    <ClInclude Include="..\simulator2D.h" />
+    <ClInclude Include="..\stencilForceModel2D.h" />
+    <ClInclude Include="..\triangleMesh2D.h" />
+    <ClInclude Include="..\triangleMeshRendering2D.h" />
+    <ClInclude Include="..\vega\averagingBuffer.h" />
+    <ClInclude Include="..\vega\centralDifferencesSparse.h" />
+    <ClInclude Include="..\vega\CGSolver.h" />
+    <ClInclude Include="..\vega\configFile.h" />
+    <ClInclude Include="..\vega\constrainedDOFs.h" />
+    <ClInclude Include="..\vega\eulerSparse.h" />
+    <ClInclude Include="..\vega\fileIO.h" />
+    <ClInclude Include="..\vega\forceModel.h" />
+    <ClInclude Include="..\vega\forceModelAssembler2D.h" />
+    <ClInclude Include="..\vega\graph.h" />
+    <ClInclude Include="..\vega\imageFormats.h" />
+    <ClInclude Include="..\vega\imageIO.h" />
+    <ClInclude Include="..\vega\implicitBackwardEulerSparse.h" />
+    <ClInclude Include="..\vega\implicitNewmarkSparse.h" />
+    <ClInclude Include="..\vega\integratorBase.h" />
+    <ClInclude Include="..\vega\integratorBaseSparse.h" />
+    <ClInclude Include="..\vega\integratorSolverSelection.h" />
+    <ClInclude Include="..\vega\linearSolver.h" />
+    <ClInclude Include="..\vega\listIO.h" />
+    <ClInclude Include="..\vega\macros.h" />
+    <ClInclude Include="..\vega\mat3d.h" />
+    <ClInclude Include="..\vega\matrixIO.h" />
+    <ClInclude Include="..\vega\matrixMacros.h" />
+    <ClInclude Include="..\vega\minivector.h" />
+    <ClInclude Include="..\vega\openGL-headers.h" />
+    <ClInclude Include="..\vega\openGLHelper.h" />
+    <ClInclude Include="..\vega\ortho2DCamera.h" />
+    <ClInclude Include="..\vega\performanceCounter.h" />
+    <ClInclude Include="..\vega\saveScreenShot.h" />
+    <ClInclude Include="..\vega\sparseMatrix.h" />
+    <ClInclude Include="..\vega\stencilForceModel.h" />
+    <ClInclude Include="..\vega\stringHelper.h" />
+    <ClInclude Include="..\vega\vec2d.h" />
+    <ClInclude Include="..\vega\vec2i.h" />
+    <ClInclude Include="..\vega\vec3d.h" />
+    <ClInclude Include="..\vega\vec3i.h" />
+    <ClInclude Include="..\vega\vegalong.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\baseModel2D.cpp" />
+    <ClCompile Include="..\corotationalLinearFEM2D.cpp" />
+    <ClCompile Include="..\imgui\examples\imgui_impl_glut.cpp" />
+    <ClCompile Include="..\imgui\examples\imgui_impl_opengl2.cpp" />
+    <ClCompile Include="..\imgui\imgui.cpp" />
+    <ClCompile Include="..\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\linearFEM2D.cpp" />
+    <ClCompile Include="..\massSpring2D.cpp" />
+    <ClCompile Include="..\simulator2D.cpp" />
+    <ClCompile Include="..\stencilForceModel2D.cpp" />
+    <ClCompile Include="..\triangleMesh2D.cpp" />
+    <ClCompile Include="..\triangleMeshRendering2D.cpp" />
+    <ClCompile Include="..\vega\averagingBuffer.cpp" />
+    <ClCompile Include="..\vega\centralDifferencesSparse.cpp" />
+    <ClCompile Include="..\vega\CGSolver.cpp" />
+    <ClCompile Include="..\vega\configFile.cpp" />
+    <ClCompile Include="..\vega\constrainedDOFs.cpp" />
+    <ClCompile Include="..\vega\eulerSparse.cpp" />
+    <ClCompile Include="..\vega\fileIO.cpp" />
+    <ClCompile Include="..\vega\forceModel.cpp" />
+    <ClCompile Include="..\vega\forceModelAssembler2D.cpp" />
+    <ClCompile Include="..\vega\graph.cpp" />
+    <ClCompile Include="..\vega\imageIO.cpp" />
+    <ClCompile Include="..\vega\implicitBackwardEulerSparse.cpp" />
+    <ClCompile Include="..\vega\implicitNewmarkSparse.cpp" />
+    <ClCompile Include="..\vega\integratorBase.cpp" />
+    <ClCompile Include="..\vega\integratorBaseSparse.cpp" />
+    <ClCompile Include="..\vega\linearSolver.cpp" />
+    <ClCompile Include="..\vega\listIO.cpp" />
+    <ClCompile Include="..\vega\mat3d.cpp" />
+    <ClCompile Include="..\vega\matrixIO.cpp" />
+    <ClCompile Include="..\vega\openGLHelper.cpp" />
+    <ClCompile Include="..\vega\ortho2DCamera.cpp" />
+    <ClCompile Include="..\vega\saveScreenShot.cpp" />
+    <ClCompile Include="..\vega\sparseMatrix.cpp" />
+    <ClCompile Include="..\vega\stringHelper.cpp" />
+    <ClCompile Include="..\vega\vec2d.cpp" />
+    <ClCompile Include="..\vega\vec3d.cpp" />
+    <ClCompile Include="..\vega\vec3i.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
