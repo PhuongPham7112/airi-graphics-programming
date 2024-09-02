@@ -67,6 +67,8 @@ public:
   friend inline Vec2d operator- (const Vec2d & vec1);
 
   friend inline double dot(const Vec2d & vec1, const Vec2d & vec2); // dot product
+  friend inline double length(const Vec2d & vec1, const Vec2d & vec2); // length
+  friend inline double length(const Vec2d & vec); // length
 
   friend inline Vec2d norm(const Vec2d & vec1); // returns normalized vector (unit length)
   inline void normalize(); // normalize itself without returning anything
@@ -185,6 +187,16 @@ inline const double & Vec2d::operator[] (int index) const
 inline double dot(const Vec2d & vec1, const Vec2d & vec2)
 {
   return (vec1.elt[0] * vec2.elt[0] + vec1.elt[1] * vec2.elt[1]);
+}
+
+inline double length(const Vec2d& vec1, const Vec2d& vec2)
+{
+    return sqrt((vec1[0] - vec2[0]) * (vec1[0] - vec2[0]) + (vec1[1] - vec2[1]) * (vec1[1] - vec2[1]));
+}
+
+inline double length(const Vec2d& vec)
+{
+    return sqrt(vec[0] * vec[0] + vec[1] * vec[1]);
 }
 
 inline Vec2d norm(const Vec2d & vec1)
