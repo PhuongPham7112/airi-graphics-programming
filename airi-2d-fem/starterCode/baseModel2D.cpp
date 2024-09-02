@@ -32,19 +32,21 @@ BaseModel2D::BaseModel2D(TriangleMesh2D * mesh_) : mesh(mesh_)
 
   // compute mass for each vertex
   masses.resize(numVertices, 0.0); 
+  double a_third = 1.0 / 3.0;
   double density_ = mesh_->getDensity();
   std::vector<Vec3i> triangles = mesh_->getTriangles(); // triangles store the vertex indices for each triangle
 
   // please calculate the mass for each vertex and store it in the vector masses above
-  for (int i = 0; i < numVertices; i++)
+  for (int i = 0; i < triangles.size(); i++)
   {
+      // triangle i_th
       Vec3i t = triangles[i];
-      Vec2d p_a = mesh_->getPosition(t[0]); // point a
-      Vec2d p_b = mesh_->getPosition(t[1]); // point b
-      Vec2d p_c = mesh_->getPosition(t[2]); // point c
+      Vec2d p_a = mesh_->getPosition(t[0]); // vertex point a
+      Vec2d p_b = mesh_->getPosition(t[1]); // vertex point b
+      Vec2d p_c = mesh_->getPosition(t[2]); // vertex point c
       
       Vec2d s_ab = p_a - p_b; // side ab
-      Vec2d s_bc = p_b - p_c; // side bc
+      Vec2d s_bc = p_c - p_b; // side bc
       double dot_product = dot(s_ab, s_bc);
 
       Vec2d vec_base = (dot_product / length(s_bc)) * norm(s_bc);
@@ -53,6 +55,11 @@ BaseModel2D::BaseModel2D(TriangleMesh2D * mesh_) : mesh(mesh_)
       double t_height = length(vec_height);
       double t_base = length(p_b, p_c);
       double v_e = 0.5 * t_base * t_height; // surface area
+
+      double m_e = v_e * density_;
+      masses[t[0]] += m_e * a_third;
+      masses[t[1]] += m_e * a_third;
+      masses[t[2]] += m_e * a_third;
   }
   
   // *********************************************
