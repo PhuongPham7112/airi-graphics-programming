@@ -97,7 +97,7 @@ ForceModelAssembler2D::ForceModelAssembler2D(StencilForceModel *eleFM) : stencil
   for (int eltype = 0; eltype < stencilForceModel->GetNumStencilTypes(); eltype++) 
   {
     int nelev = stencilForceModel->GetNumStencilVertices(eltype);
-    bufferExamplars[eltype].resize(nelev * 2 + nelev * nelev * 4);
+    bufferExamplars[eltype].resize(nelev * 2 + nelev * nelev * 4); // contain both itnernal forces and stiffness matrix
   }
 }
 
