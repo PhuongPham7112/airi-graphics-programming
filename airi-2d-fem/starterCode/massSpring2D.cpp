@@ -58,13 +58,18 @@ void MassSpring2D::ComputeElementEnergyAndForceAndStiffnessMatrix(int eid, const
   // vector L
   Vec2d L = p_a - p_b;
   double l_length = length(L);
+  double inv_l_length = 1 / l_length;
+  double inv_l_length_3 = pow(inv_l_length, 3.0);
   double r_length = restLengths[eid];
   Vec2d f_a = -stiffness * (l_length - r_length) * norm(L);
   Vec2d f_b = -f_a;
   
-  double x = stiffness * (1.0 - r_length * ((1 / l_length) - (1 / pow(l_length, 3.0)) * (p_a[0] - p_b[0]) * (p_a[0] - p_b[0])));
-  double y = stiffness * (0.0 - r_length * (-(1 / pow(l_length, 3.0)) * (p_a[0] - p_b[0]) * (p_a[1] - p_b[1])));
-  double z = stiffness * (1.0 - r_length * ((1 / l_length) - (1 / pow(l_length, 3.0)) * (p_a[1] - p_b[1]) * (p_a[1] - p_b[1])));
+  // k_hook * (1 - R * (1 / L - 1 / L^3 * (p_a.x - p_b.x) * (p_a.x - p_b.x)))
+  double x = -stiffness * (1.0 - r_length * (inv_l_length - inv_l_length_3 * (p_a[0] - p_b[0]) * (p_a[0] - p_b[0])));
+  // k_hook * (- R * (- 1 / L^3 * (p_a.x - p_b.x) * (p_a.y - p_b.y)))
+  double y = -stiffness * (-r_length * (-inv_l_length_3 * (p_a[0] - p_b[0]) * (p_a[1] - p_b[1])));
+  // k_hook * (1 - R * (1 / L - 1 / L^3 * (p_a.y - p_b.y) * (p_a.y - p_b.y)))
+  double z = -stiffness * (1.0 - r_length * (inv_l_length - inv_l_length_3 * (p_a[1] - p_b[1]) * (p_a[1] - p_b[1])));
 
   if (elementEnergy)
   {
@@ -83,22 +88,25 @@ void MassSpring2D::ComputeElementEnergyAndForceAndStiffnessMatrix(int eid, const
   if (elementStiffnessMatrix)  // 4x4 matrix
   {
     // please calculate the stiffness matrix for the spring here
-      //int mod = 1;
-      //for (int i = 0; i < 4; i++)
-      //{
-      //    if (i == 1 || i == 2)
-      //    {
-      //        mod = -1;
-      //    }
-      //    else
-      //    {
-      //        mod = 1;
-      //    }
-      //    elementStiffnessMatrix[i * 4] = mod * x;
-      //    elementStiffnessMatrix[i * 4 + 1] = mod * y;
-      //    elementStiffnessMatrix[i * 4 + 2] = mod * y;
-      //    elementStiffnessMatrix[i * 4 + 3] = mod * z;
-      //}
+      elementStiffnessMatrix[0] = x;
+      elementStiffnessMatrix[1] = y;
+      elementStiffnessMatrix[4] = y;
+      elementStiffnessMatrix[5] = z;
+      
+      elementStiffnessMatrix[2] = -x;
+      elementStiffnessMatrix[3] = -y;
+      elementStiffnessMatrix[6] = -y;
+      elementStiffnessMatrix[7] = -z;
+
+      elementStiffnessMatrix[8] = -x;
+      elementStiffnessMatrix[9] = -y;
+      elementStiffnessMatrix[12] = -y;
+      elementStiffnessMatrix[13] = -z;
+
+      elementStiffnessMatrix[10] = x;
+      elementStiffnessMatrix[11] = y;
+      elementStiffnessMatrix[14] = y;
+      elementStiffnessMatrix[15] = z;
   }
 
   // ***********************************************

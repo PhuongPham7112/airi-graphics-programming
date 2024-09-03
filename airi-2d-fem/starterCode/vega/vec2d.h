@@ -196,7 +196,7 @@ inline double length(const Vec2d& vec1, const Vec2d& vec2)
 
 inline double length(const Vec2d& vec)
 {
-    return sqrt(vec[0] * vec[0] + vec[1] * vec[1]);
+    return sqrt(dot(vec, vec));
 }
 
 inline Vec2d norm(const Vec2d & vec1)
