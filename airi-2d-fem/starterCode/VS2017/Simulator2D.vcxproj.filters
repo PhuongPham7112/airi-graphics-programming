@@ -1,0 +1,287 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="vega">
+      <UniqueIdentifier>{57407df2-7c67-4f73-a339-ba31c4a4ce17}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\baseModel2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\corotationalLinearFEM2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\linearFEM2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\massSpring2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\simulator2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\stencilForceModel2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\triangleMesh2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\triangleMeshRendering2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\averagingBuffer.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\centralDifferencesSparse.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\CGSolver.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\configFile.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\constrainedDOFs.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\eulerSparse.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\fileIO.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\forceModel.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\forceModelAssembler2D.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\graph.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\imageFormats.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\imageIO.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\implicitBackwardEulerSparse.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\implicitNewmarkSparse.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\integratorBase.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\integratorBaseSparse.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\integratorSolverSelection.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\linearSolver.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\listIO.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\macros.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\mat3d.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\matrixIO.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\matrixMacros.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\minivector.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\openGL-headers.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\openGLHelper.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\ortho2DCamera.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\performanceCounter.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\saveScreenShot.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\sparseMatrix.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\stencilForceModel.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\stringHelper.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\vec2d.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\vec2i.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\vec3d.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\vec3i.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\vega\vegalong.h">
+      <Filter>vega</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui\imgui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui\examples\imgui_impl_opengl2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\imgui\examples\imgui_impl_glut.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\triangleMeshRendering2D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\triangleMesh2D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\stencilForceModel2D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\simulator2D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\massSpring2D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\linearFEM2D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\corotationalLinearFEM2D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\baseModel2D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\averagingBuffer.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\centralDifferencesSparse.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\CGSolver.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\configFile.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\constrainedDOFs.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\eulerSparse.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\fileIO.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\forceModel.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\forceModelAssembler2D.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\graph.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\imageIO.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\implicitBackwardEulerSparse.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\implicitNewmarkSparse.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\integratorBase.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\integratorBaseSparse.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\linearSolver.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\listIO.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\mat3d.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\matrixIO.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\openGLHelper.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\ortho2DCamera.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\saveScreenShot.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\sparseMatrix.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\stringHelper.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\vec2d.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\vec3d.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\vega\vec3i.cpp">
+      <Filter>vega</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\imgui_widgets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\imgui_draw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\imgui_demo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\imgui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\examples\imgui_impl_opengl2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui\examples\imgui_impl_glut.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

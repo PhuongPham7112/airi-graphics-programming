@@ -1,0 +1,1 @@
+All animation files are under mocapPlayer folder.
